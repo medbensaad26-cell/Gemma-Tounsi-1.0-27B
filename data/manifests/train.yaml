@@ -1,0 +1,105 @@
+# =============================================================================
+# data/manifests/train.yaml
+# Tunisian adaptation training mixture — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# PURPOSE
+#   Declares every source that contributes to the Tunisian adaptation training
+#   data (Derja in Arabic script + Arabizi), and how those sources are combined
+#   into data/train.jsonl.
+#
+# STATUS: SKELETON. No sources declared yet. Nothing is downloaded from here;
+#   this manifest is the input contract for scripts/prepare_data.sh.
+#
+# HARD RULES
+#   - Every source must be declared here BEFORE it is used. Undeclared data
+#     must never reach data/train.jsonl.
+#   - Every source must carry its license and permitted use.
+#   - NO evaluation data may appear here. TounsiBench, the Arabizi benchmark and
+#     the retention EVAL set are evaluation-only (see eval.yaml).
+#   - Replay/rehearsal data for general-capability preservation belongs in
+#     retention.yaml, not here.
+#
+# TODO
+#   [ ] Identify candidate Derja / Arabizi corpora and verify licensing.
+#   [ ] Declare each source using the schema documented below.
+#   [ ] Decide mixture weights (NOT decided yet — see `mixture`).
+#   [ ] Define normalization rules for Arabic script and Arabizi.
+#   [ ] Define dedup + contamination checks against every eval set.
+#   [ ] Mirror all provenance decisions in docs/DATA.md.
+# =============================================================================
+
+version: 0
+name: gemma-tounsi-train
+description: >-
+  Tunisian Arabic (Derja + Arabizi) adaptation training mixture. Skeleton only:
+  no sources have been selected, licensed, or downloaded.
+
+# Guarantees asserted by this manifest; prepare_data.sh should verify them.
+constraints:
+  purpose: training
+  contains_evaluation_data: false
+  # TODO: fail preparation if any record here overlaps an eval set.
+  contamination_check_required: true
+
+# -----------------------------------------------------------------------------
+# sources — one entry per corpus.
+#
+# Schema (all fields required once a source is added):
+#   - id:            short stable identifier, used in logs and reports
+#     type:          hf_dataset | url | local | scraped | synthetic | human
+#     location:      dataset id / URL / path (no credentials inline)
+#     revision:      commit SHA, tag, or snapshot date — MUST be pinned
+#     script:        derja_arabic | arabizi | mixed
+#     license:       SPDX id or explicit terms
+#     permitted_use: why redistribution/training is allowed
+#     attribution:   required credit, if any
+#     notes:         quality caveats, dialect coverage, known issues
+# -----------------------------------------------------------------------------
+sources: []
+  # TODO: declare sources here. Example shape (commented out on purpose):
+  #
+  # - id: example-derja-corpus
+  #   type: hf_dataset
+  #   location: <org/dataset>
+  #   revision: <commit-sha>
+  #   script: derja_arabic
+  #   license: <SPDX-id>
+  #   permitted_use: <justification>
+  #   attribution: <required credit>
+  #   notes: <caveats>
+
+# -----------------------------------------------------------------------------
+# preprocessing — applied when building processed/ from raw/.
+# TODO: decide and document each rule; leave empty until decided.
+# -----------------------------------------------------------------------------
+preprocessing:
+  # TODO: Unicode normalization form for Arabic script (e.g. NFC vs NFKC).
+  normalization: null
+  # TODO: tatweel/diacritics/punctuation handling; Arabizi casing rules.
+  cleaning: []
+  # TODO: length bounds, language-ID filtering, quality heuristics.
+  filters: []
+  # TODO: exact + near-duplicate strategy (within and across sources).
+  deduplication: null
+
+# -----------------------------------------------------------------------------
+# mixture — how sources are combined into data/train.jsonl.
+#
+# DELIBERATELY UNDECIDED. Per project rules, dataset percentages are not to be
+# invented at this stage; they will be set after the Soup environment and the
+# data pipeline are validated.
+# -----------------------------------------------------------------------------
+mixture:
+  weights: {}      # TODO: source id -> weight/percentage
+  seed: null       # TODO: fix a seed for deterministic shuffling
+  target_size: null
+
+# -----------------------------------------------------------------------------
+# output — produced by scripts/prepare_data.sh. Gitignored.
+# -----------------------------------------------------------------------------
+output:
+  path: data/train.jsonl
+  format: jsonl
+  # TODO: record the exact record schema once Soup's expected input is confirmed.
+  schema: null

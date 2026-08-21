@@ -1,0 +1,90 @@
+# =============================================================================
+# data/manifests/retention.yaml
+# Replay / rehearsal mixture (TRAINING) — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# PURPOSE
+#   Declares the general-purpose data replayed DURING training so that Gemma's
+#   existing instruction-following and reasoning capabilities are not degraded
+#   by Tunisian adaptation. Builds data/retention.jsonl.
+#
+# STATUS: SKELETON. No sources declared yet.
+#
+# CRITICAL DISTINCTION
+#   This file describes TRAINING data (replay/rehearsal).
+#   The retention BENCHMARK is a separate, disjoint set defined in
+#   data/manifests/eval.yaml and executed from eval/retention/.
+#   Mixing the two would make retention evaluation meaningless: the model would
+#   be measured on examples it was trained on.
+#
+# HARD RULES
+#   - No item in this manifest may overlap the retention EVAL set.
+#   - Sources must be disjoint from eval sources at the source level where
+#     possible, not merely deduplicated at the record level.
+#   - Every source must be declared with license and permitted use.
+#
+# TODO
+#   [ ] Choose replay sources covering the capabilities to protect.
+#   [ ] Verify licensing for each source.
+#   [ ] Ensure source-level disjointness from eval.yaml, then verify at record
+#       level with a contamination check.
+#   [ ] Decide the replay ratio (NOT decided yet — see `mixture`).
+#   [ ] Document decisions in docs/DATA.md.
+# =============================================================================
+
+version: 0
+name: gemma-tounsi-retention-replay
+description: >-
+  General-capability replay/rehearsal data used during training to mitigate
+  catastrophic forgetting. Skeleton only: no sources selected.
+
+constraints:
+  purpose: training           # replay/rehearsal — NOT evaluation
+  contains_evaluation_data: false
+  # Must be verified against data/manifests/eval.yaml before any training run.
+  disjoint_from_retention_eval: true
+  contamination_check_required: true
+
+# -----------------------------------------------------------------------------
+# capabilities_to_preserve
+# Which abilities the replay mixture is meant to protect. Each should map to a
+# measurable task in the retention evaluation track.
+# TODO: finalize this list together with eval/retention/.
+# -----------------------------------------------------------------------------
+capabilities_to_preserve: []
+  # TODO: e.g. instruction following, multilingual QA, reasoning, code,
+  #       safety behaviour, long-context handling, formatting compliance.
+  #       Keep aligned 1:1 with the retention benchmark categories.
+
+# -----------------------------------------------------------------------------
+# sources — same schema as train.yaml.
+#
+#   - id / type / location / revision / license / permitted_use / attribution
+#     capability: which preserved capability this source covers
+#     notes:      caveats
+# -----------------------------------------------------------------------------
+sources: []
+  # TODO: declare replay sources here.
+
+preprocessing:
+  normalization: null   # TODO
+  cleaning: []          # TODO
+  filters: []           # TODO
+  deduplication: null   # TODO: incl. cross-check against eval sets
+
+# -----------------------------------------------------------------------------
+# mixture — replay ratio relative to the Tunisian training data.
+#
+# DELIBERATELY UNDECIDED. The replay proportion is an experimental variable and
+# must not be guessed now; it will be tuned against the retention benchmark.
+# -----------------------------------------------------------------------------
+mixture:
+  weights: {}          # TODO: source id -> weight/percentage
+  replay_ratio: null   # TODO: share of total training tokens/examples
+  seed: null           # TODO
+  target_size: null
+
+output:
+  path: data/retention.jsonl
+  format: jsonl
+  schema: null         # TODO: match the schema used by data/train.jsonl

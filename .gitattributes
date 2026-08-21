@@ -1,0 +1,25 @@
+# Normalize line endings so the repository behaves identically on Windows,
+# macOS and Linux. Shell scripts MUST stay LF: CRLF breaks the shebang and
+# makes bash fail with "bad interpreter".
+
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+*.cff   text eol=lf
+Dockerfile text eol=lf
+.env.example text eol=lf
+
+# Data files are gitignored, but if one is ever force-added, keep it byte-exact.
+*.jsonl -text
+*.parquet binary
+*.arrow binary
+
+# Model artifacts must never be committed; mark binary as a second line of
+# defence against accidental text-mangling.
+*.safetensors binary
+*.bin binary
+*.pt binary
+*.gguf binary
