@@ -1,0 +1,104 @@
+# =============================================================================
+# data/manifests/eval.yaml
+# EVALUATION-ONLY data — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+#  ############################################################
+#  #  EVALUATION ONLY — MUST NEVER BE USED AS TRAINING DATA.  #
+#  ############################################################
+#
+# PURPOSE
+#   Declares the evaluation sets behind the three evaluation tracks:
+#     1. tounsibench — Tunisian Arabic / Derja (Arabic script)
+#     2. arabizi     — Latin-script Tunisian
+#     3. retention   — preservation of Gemma's general capabilities
+#
+# STATUS: SKELETON. No evaluation sets defined yet.
+#
+# HARD RULES
+#   - Nothing declared here may appear in data/train.jsonl or
+#     data/retention.jsonl, directly or transitively.
+#   - Data preparation must FAIL LOUDLY if an eval item is found in any
+#     training mixture. Silent filtering is not acceptable: a collision means
+#     the mixture definition is wrong.
+#   - The retention EVAL set declared here is disjoint from the retention
+#     REPLAY data in retention.yaml (see that file's constraints).
+#   - Held-out labels/answers, where applicable, are stored outside Git.
+#
+# TODO
+#   [ ] Define TounsiBench task inventory (categories, sizes, answer format).
+#   [ ] Define the Arabizi benchmark, incl. orthographic variation and
+#       code-switching coverage.
+#   [ ] Select the retention benchmark suites; confirm source-level disjointness
+#       from retention replay data.
+#   [ ] Specify metrics, decoding settings and judging protocol per track.
+#   [ ] Document the full protocol in docs/EVALUATION.md.
+# =============================================================================
+
+version: 0
+name: gemma-tounsi-eval
+description: >-
+  Evaluation-only data definitions for the three evaluation tracks. Skeleton
+  only: no sets defined. Never referenced by any training configuration.
+
+constraints:
+  purpose: evaluation
+  usable_for_training: false        # non-negotiable
+  must_not_appear_in:
+    - data/train.jsonl
+    - data/retention.jsonl
+  on_contamination: fail            # abort preparation; do not silently drop
+
+# -----------------------------------------------------------------------------
+# tracks — one entry per evaluation track. Each maps to a directory in eval/.
+#
+# Schema per track (fill once designed):
+#   sources:   list of sets (id / type / location / revision / license / notes)
+#   tasks:     task inventory with sizes and answer formats
+#   metrics:   how the track is scored
+#   protocol:  prompting, decoding, and judging rules
+# -----------------------------------------------------------------------------
+tracks:
+
+  tounsibench:
+    directory: eval/tounsibench
+    description: Tunisian Arabic / Derja in Arabic script.
+    evaluation_only: true
+    sources: []      # TODO
+    tasks: []        # TODO
+    metrics: []      # TODO
+    protocol: null   # TODO
+
+  arabizi:
+    directory: eval/arabizi
+    description: >-
+      Latin-script Tunisian (Arabizi), including orthographic variation,
+      digit-letter substitutions, and code-switching.
+    evaluation_only: true
+    sources: []      # TODO
+    tasks: []        # TODO
+    metrics: []      # TODO
+    protocol: null   # TODO
+
+  retention:
+    directory: eval/retention
+    description: >-
+      Regression guard for Gemma's general capabilities after adaptation.
+      MUST be disjoint from the replay data in data/manifests/retention.yaml.
+    evaluation_only: true
+    disjoint_from_retention_training: true
+    sources: []      # TODO
+    tasks: []        # TODO
+    metrics: []      # TODO
+    protocol: null   # TODO
+
+# -----------------------------------------------------------------------------
+# reporting
+# TODO: define baselines (base Gemma 3 27B vs. adapted model), the exact
+# revisions compared, and the pass/fail thresholds for the retention guard.
+# No results may be fabricated before real runs exist.
+# -----------------------------------------------------------------------------
+reporting:
+  baselines: []             # TODO
+  retention_thresholds: {}  # TODO
+  results_location: null    # TODO: outputs are gitignored; store outside Git

@@ -216,3 +216,116 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# =============================================================================
+# Gemma Tounsi 1.0 — project-specific rules
+# =============================================================================
+# Principle: large or generated files live OUTSIDE Git. Only small metadata is
+# tracked (manifests, release configs, benchmark definitions, scripts, docs).
+
+# --- Secrets & credentials ---------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+credentials.json
+service-account*.json
+.huggingface/
+.hf_token
+.netrc
+.aws/
+.gcloud/
+.kaggle/
+wandb-key*
+
+# --- Datasets (never committed) ----------------------------------------------
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/splits/*
+!data/splits/.gitkeep
+data/train.jsonl
+data/retention.jsonl
+
+# Any stray dataset dumps anywhere in the tree.
+*.jsonl
+*.arrow
+*.parquet
+*.tfrecord
+*.csv
+*.tsv
+*.txt.gz
+*.jsonl.gz
+*.zst
+
+# Evaluation tracks: keep definitions/metadata, drop bulk data & results.
+# Task specs and scoring logic under eval/**/tasks/ and eval/**/scoring/ stay
+# tracked (they are small metadata). If a small benchmark definition ever has
+# to live in a .jsonl file, track it explicitly with:  git add -f <path>
+eval/**/data/
+eval/**/results/
+eval/**/predictions/
+eval/**/*.jsonl
+
+
+# --- Model checkpoints, adapters & weights -----------------------------------
+checkpoints/
+checkpoint-*/
+adapters/
+adapter/
+merged/
+merged_model/
+models/
+weights/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.onnx
+*.npz
+
+# --- Experiment outputs & generated artifacts --------------------------------
+outputs/
+output/
+runs/
+artifacts/
+results/
+reports/
+logs/
+tmp/
+scratch/
+wandb/
+mlruns/
+tensorboard/
+lightning_logs/
+*.out
+*.err
+
+# --- Caches (Hugging Face, datasets, tokenizers, compilers) ------------------
+.cache/
+.hf_home/
+hf_cache/
+huggingface/
+transformers_cache/
+.datasets_cache/
+.triton/
+.torch/
+.nv/
+.flash_attn_cache/
+
+# --- OS / editor noise -------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+
+

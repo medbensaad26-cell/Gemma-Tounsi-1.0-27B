@@ -1,0 +1,54 @@
+# =============================================================================
+# soup.yaml — training configuration for Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# STATUS: PLACEHOLDER — INTENTIONALLY INERT.
+#
+# This file currently defines NO active keys. Every line below is a comment.
+# That is deliberate:
+#
+#   1. The final training configuration will be added ONLY AFTER the Soup
+#      environment has been installed and validated, so that every field here
+#      matches Soup's real, documented schema.
+#   2. No field is invented. Sections below are written as questions to answer,
+#      not as configuration to run.
+#   3. Because the file is inert, it cannot accidentally launch a training run
+#      with guessed hyperparameters.
+#
+# Soup is an EXTERNAL dependency. It owns the training loop, the QLoRA
+# implementation, model loading, quantization, checkpointing, and all GPU
+# infrastructure. This repository only supplies the configuration and the data.
+#
+# -----------------------------------------------------------------------------
+# TODO (step 2 — after the Soup environment is validated)
+# -----------------------------------------------------------------------------
+# [ ] Pin the Soup version/commit SHA that this config targets.
+# [ ] Read Soup's config reference and record the authoritative schema here.
+# [ ] Fill in, using Soup's real field names only:
+#       - base model            : Gemma 3 27B identifier + revision
+#       - tokenizer / chat template handling
+#       - quantization          : QLoRA base precision settings
+#       - LoRA adapter          : rank, alpha, dropout, target modules
+#       - dataset inputs        : paths produced by scripts/prepare_data.sh
+#                                 (see data/manifests/train.yaml and
+#                                  data/manifests/retention.yaml)
+#       - sequence length / packing
+#       - optimizer & schedule  : learning rate, warmup, weight decay
+#       - batching              : micro-batch size, gradient accumulation
+#       - precision / attention implementation
+#       - checkpointing         : output dir, save cadence, retention
+#       - logging / experiment tracking
+#       - seed & determinism settings
+# [ ] Confirm that NO evaluation data is reachable from any training input.
+#     TounsiBench and the retention EVAL set are evaluation-only.
+# [ ] Once a run is accepted for release, freeze a copy at
+#     configs/releases/v1.0.yaml (do not duplicate this file before then).
+#
+# -----------------------------------------------------------------------------
+# NOT YET DECIDED — do not guess these
+# -----------------------------------------------------------------------------
+# LoRA rank/alpha, learning rate, batch size, gradient accumulation, epochs,
+# sequence length, dataset mixture percentages, Gemma target module names,
+# GPU/sharding settings, quantization details.
+#
+# =============================================================================

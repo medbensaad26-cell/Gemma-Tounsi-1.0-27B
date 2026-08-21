@@ -1,0 +1,27 @@
+# =============================================================================
+# docker-compose.yml — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# STATUS: PLACEHOLDER — INTENTIONALLY INERT.
+#
+# No services are defined yet, so this file cannot start anything. The full
+# runtime (image, GPU reservation, mounts, env wiring) is implemented in step 2,
+# together with the Dockerfile, after the Soup environment is validated.
+#
+# -----------------------------------------------------------------------------
+# TODO (step 2)
+# -----------------------------------------------------------------------------
+# [ ] Define a single service that builds the Dockerfile in this repository.
+# [ ] Reserve GPU devices (NVIDIA container runtime).
+# [ ] Mount, as volumes kept OUTSIDE Git:
+#       - dataset directory   -> data/
+#       - output directory    -> checkpoints / adapters
+#       - Hugging Face cache  -> HF_HOME
+# [ ] Load credentials from the local `.env` (see .env.example). Never inline
+#     tokens or keys in this file; `.env` is gitignored.
+# [ ] Mount the repository read-only where practical, so container runs cannot
+#     mutate tracked configuration.
+# [ ] Set shared-memory size and ulimits appropriate for a 27B QLoRA run.
+# [ ] Keep the default command inert: no training must start on `up`.
+#
+# =============================================================================

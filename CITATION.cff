@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use Gemma Tounsi 1.0 or this repository, please cite it as below."
+title: "Gemma Tounsi 1.0 (27B): a Tunisian-adapted Gemma 3 27B model"
+abstract: >-
+  Gemma Tounsi 1.0 adapts Gemma 3 27B to Tunisian Arabic (Derja and Arabizi)
+  using QLoRA, with dedicated evaluation tracks for Derja, Arabizi, and
+  retention of the base model's general capabilities. This repository contains
+  the dataset preparation, mixture definitions, evaluation harnesses, and
+  release orchestration; training is performed with the external open-source
+  Soup training engine.
+type: software
+license: Apache-2.0
+
+# TODO: replace the placeholder entity author with the individual authors
+# (given-names / family-names / orcid / affiliation) before the v1.0 release.
+authors:
+  - name: "The Gemma Tounsi Project Contributors"
+
+repository-code: "https://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B"
+
+keywords:
+  - gemma
+  - tunisian-arabic
+  - derja
+  - arabizi
+  - qlora
+  - low-resource-languages
+  - language-model-adaptation
+
+# TODO: set on release.
+# version: "1.0.0"
+# date-released: "YYYY-MM-DD"
+# doi: ""
