@@ -5,7 +5,7 @@ Tunisian Arabic (Derja), Arabizi, and preservation of the base model's general c
 
 ## Objective
 
-Gemma Tounsi 1.0 adapts Gemma 3 27B to Tunisian Arabic — including Derja written in Arabic
+Gemma Tounsi 1.0 27B adapts Gemma 3 27B to Tunisian Arabic — including Derja written in Arabic
 script and Arabizi (Latin-script Tunisian) — without degrading the general instruction-following
 and reasoning capabilities of the base model. This repository owns the *data*, *evaluation*, and
 *release* side of the project: dataset preparation and provenance, mixture definitions,
