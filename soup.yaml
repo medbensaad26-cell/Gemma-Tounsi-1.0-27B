@@ -1,54 +1,80 @@
 # =============================================================================
-# soup.yaml — training configuration for Gemma Tounsi 1.0 (27B)
+# soup.yaml — SMOKE-TEST CONFIGURATION ONLY
 # =============================================================================
 #
-# STATUS: PLACEHOLDER — INTENTIONALLY INERT.
+# ############################################################################
+# #  THIS IS NOT THE GEMMA TOUNSI 1.0 TRAINING RECIPE.                       #
+# #  It is a minimal PLACEHOLDER whose only job is to prove that the         #
+# #  Docker + Soup + CUDA path works and that a QLoRA/SFT config for         #
+# #  Gemma 3 27B is ACCEPTED by Soup's schema.                               #
+# #                                                                          #
+# #  Every hyperparameter below is a placeholder, NOT a decision:            #
+# #  LoRA rank/alpha/dropout, learning rate, epochs, batch size, gradient    #
+# #  accumulation, sequence length and mixture ratios are all still          #
+# #  DELIBERATELY UNDECIDED. Do not read any of them as a recipe.            #
+# ############################################################################
 #
-# This file currently defines NO active keys. Every line below is a comment.
-# That is deliberate:
+# Validated against: soup-cli 0.73.3
+#   schema source of truth: src/soup_cli/config/schema.py @ v0.73.3
+#   (SoupConfig / DataConfig / TrainingConfig / LoraConfig)
+# Every key used here exists in that schema. No field is invented.
 #
-#   1. The final training configuration will be added ONLY AFTER the Soup
-#      environment has been installed and validated, so that every field here
-#      matches Soup's real, documented schema.
-#   2. No field is invented. Sections below are written as questions to answer,
-#      not as configuration to run.
-#   3. Because the file is inert, it cannot accidentally launch a training run
-#      with guessed hyperparameters.
+# Run it with:
+#   docker compose run --rm soup soup train --config /workspace/soup.yaml
 #
-# Soup is an EXTERNAL dependency. It owns the training loop, the QLoRA
-# implementation, model loading, quantization, checkpointing, and all GPU
-# infrastructure. This repository only supplies the configuration and the data.
-#
-# -----------------------------------------------------------------------------
-# TODO (step 2 — after the Soup environment is validated)
-# -----------------------------------------------------------------------------
-# [ ] Pin the Soup version/commit SHA that this config targets.
-# [ ] Read Soup's config reference and record the authoritative schema here.
-# [ ] Fill in, using Soup's real field names only:
-#       - base model            : Gemma 3 27B identifier + revision
-#       - tokenizer / chat template handling
-#       - quantization          : QLoRA base precision settings
-#       - LoRA adapter          : rank, alpha, dropout, target modules
-#       - dataset inputs        : paths produced by scripts/prepare_data.sh
-#                                 (see data/manifests/train.yaml and
-#                                  data/manifests/retention.yaml)
-#       - sequence length / packing
-#       - optimizer & schedule  : learning rate, warmup, weight decay
-#       - batching              : micro-batch size, gradient accumulation
-#       - precision / attention implementation
-#       - checkpointing         : output dir, save cadence, retention
-#       - logging / experiment tracking
-#       - seed & determinism settings
-# [ ] Confirm that NO evaluation data is reachable from any training input.
-#     TounsiBench and the retention EVAL set are evaluation-only.
-# [ ] Once a run is accepted for release, freeze a copy at
-#     configs/releases/v1.0.yaml (do not duplicate this file before then).
-#
-# -----------------------------------------------------------------------------
-# NOT YET DECIDED — do not guess these
-# -----------------------------------------------------------------------------
-# LoRA rank/alpha, learning rate, batch size, gradient accumulation, epochs,
-# sequence length, dataset mixture percentages, Gemma target module names,
-# GPU/sharding settings, quantization details.
-#
+# Paths are container paths: the repository root is mounted at /workspace.
 # =============================================================================
+
+# --- Base model --------------------------------------------------------------
+# SoupConfig.base — HF model ID of the target base model (gated: needs HF_TOKEN).
+base: google/gemma-3-27b-it
+
+# SoupConfig.task — supervised fine-tuning.
+task: sft
+
+# SoupConfig.backend — stock transformers path (default). Not `unsloth`/`mlx`:
+# the baseline must be proven on the plain path first.
+backend: transformers
+
+# --- Data --------------------------------------------------------------------
+# PLACEHOLDER INPUT. data/train.jsonl does not exist yet and is produced by
+# scripts/prepare_data.sh; no dataset is downloaded by this repository.
+# The real mixture is defined in data/manifests/train.yaml.
+data:
+  train: ./data/train.jsonl
+  format: alpaca      # DataConfig.format — placeholder; real format TBD.
+  val_split: 0.1      # schema default, restated for clarity.
+  max_length: 1024    # SMOKE-TEST value only, not a sequence-length decision.
+
+# --- Training ----------------------------------------------------------------
+training:
+  # Smallest run that still exercises the full code path.
+  epochs: 1
+  lr: 2.0e-5
+  batch_size: 1
+  gradient_accumulation_steps: 1
+
+  # QLoRA = 4-bit quantized base + LoRA adapter.
+  # TrainingConfig.quantization accepts "4bit" — this is the QLoRA switch.
+  quantization: 4bit
+
+  # LoRA adapter (TrainingConfig.lora -> LoraConfig).
+  # target_modules: "auto" lets peft resolve Gemma 3's module names, so no
+  # module name is guessed here.
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules: auto
+
+  # Layer streaming stays OFF (schema default is already false). It is BETA and
+  # is only evaluated AFTER this baseline path is proven. Enabling it would also
+  # force quantization=none, which would defeat the QLoRA check above.
+  stream_layers: false
+
+  seed: 42
+  logging_steps: 1
+
+# --- Output ------------------------------------------------------------------
+# Under /workspace, so checkpoints/adapters appear on the host. Gitignored.
+output: ./output/smoke-test

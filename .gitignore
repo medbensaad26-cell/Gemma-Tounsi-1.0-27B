@@ -320,6 +320,25 @@ transformers_cache/
 .nv/
 .flash_attn_cache/
 
+# --- Docker / container runtime caches ---------------------------------------
+# The HF cache is bind-mounted from the host into the container; the default
+# host path is ./.cache/huggingface (already covered by .cache/ above).
+.docker/
+docker-compose.override.yml
+docker-compose.*.local.yml
+.buildx-cache/
+*.dockerignore.local
+
+# --- Soup runtime & generated evaluation outputs ------------------------------
+# Soup writes checkpoints, adapters and run metadata under the mounted
+# /workspace (= this repository). Keep all of it out of Git.
+output/smoke-test/
+.soup/
+soup_cache/
+evidence*.json
+*.repro-receipt.json
+
+
 # --- OS / editor noise -------------------------------------------------------
 .DS_Store
 Thumbs.db

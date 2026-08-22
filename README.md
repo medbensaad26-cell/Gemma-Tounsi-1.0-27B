@@ -20,10 +20,11 @@ external dependency.
 | Area | Status |
 | --- | --- |
 | Repository architecture | ✅ in place |
-| Soup environment validation | ⬜ not started |
+| Docker/Soup training environment | ✅ implemented & validated (except GPU) |
+| Soup environment validation | 🟨 validated on CPU; **GPU still unverified** |
 | Dataset sourcing & provenance | ⬜ not started |
 | Data preparation pipeline | ⬜ not started |
-| Training configuration (`soup.yaml`) | ⬜ placeholder only |
+| Training configuration (`soup.yaml`) | 🟨 smoke-test placeholder only |
 | Evaluation harnesses | ⬜ not started |
 | Released model | ⬜ not released |
 
@@ -35,9 +36,9 @@ deliberately **undecided** and will be fixed only after the Soup environment is 
 
 ```
 gemma-tounsi-1.0/
-├── soup.yaml            # training config consumed by Soup (placeholder)
-├── Dockerfile           # runtime image (placeholder)
-├── docker-compose.yml   # local/GPU orchestration (placeholder)
+├── soup.yaml            # training config consumed by Soup (smoke-test placeholder)
+├── Dockerfile           # runtime image (pinned official Soup image)
+├── docker-compose.yml   # local/GPU orchestration
 ├── data/                # dataset preparation, manifests & provenance
 ├── eval/                # evaluation tracks (definitions, not results)
 ├── configs/releases/    # frozen configs for released models
@@ -81,6 +82,46 @@ and is kept strictly separate from the retention evaluation set. See `eval/READM
 Training is performed by [Soup](#architecture-overview), an external open-source training engine.
 This repository provides the configuration (`soup.yaml`), the data manifests, and the wrapper in
 `scripts/train.sh`. See `docs/TRAINING.md`.
+
+## Training environment
+
+Soup runs **entirely inside Docker**, with this repository mounted at `/workspace`. The host needs
+only Docker — no local PyTorch, CUDA, or `soup-cli` install.
+
+| | |
+| --- | --- |
+| Base image | `ghcr.io/makazhanalpamys/soup:0.73.3` (official, **pinned** — never `latest`) |
+| Base digest | `sha256:4536816b4975a4b3abdcc3bd0761e94cb0c5f82cdee675f10f750fa19c4843d1` |
+| Soup version | `soup v0.73.3` |
+| Python | `3.10.12` (Soup supports 3.10–3.12; 3.13 is **not** supported) |
+| Fine-tuning | QLoRA / SFT — `training.quantization: 4bit` + `training.lora` |
+| Layer streaming | **off** (BETA; evaluated only after the baseline path works) |
+
+`0.73.3` was chosen because it is the highest tag published to
+`ghcr.io/makazhanalpamys/soup` and matches the latest `soup-cli` release on PyPI.
+
+### Quick start
+
+```bash
+cp .env.example .env      # then paste your HF_TOKEN (gated Gemma 3 access)
+
+docker compose build                                            # build
+docker compose run --rm soup soup version                       # check Soup
+docker compose run --rm soup soup doctor                        # health check
+./scripts/doctor.sh                                             # all env checks
+./scripts/train.sh                                              # smoke-test run
+```
+
+Two compose services share one definition: **`soup`** reserves all NVIDIA GPUs (the training
+service, requires the NVIDIA Container Toolkit), and **`soup-cpu`** is identical without the GPU
+reservation, for environment validation on a machine that has no NVIDIA adapter — not for training.
+
+Outputs written under `/workspace` appear directly on the host (e.g. `output/smoke-test/`) and are
+gitignored. Secrets come from `.env` at run time and are never baked into the image.
+
+> **Current limitation:** the validation host has no NVIDIA GPU, so `torch.cuda.is_available()`
+> is still `False` and no training has been run. Build, Soup, Python, mounts, secret passthrough
+> and config validation all pass. See [`docs/TRAINING.md`](docs/TRAINING.md) §9.
 
 ## Large files & secrets
 

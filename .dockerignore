@@ -1,0 +1,51 @@
+# =============================================================================
+# .dockerignore — keep the build context small and secret-free
+# =============================================================================
+# The Dockerfile deliberately COPYs nothing (the repo is bind-mounted at
+# /workspace at run time). This file still matters: everything listed here is
+# never even sent to the Docker daemon, so a build can neither be slowed down by
+# large local files nor accidentally capture a secret.
+# =============================================================================
+
+# Secrets — must never reach the daemon.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.netrc
+.huggingface/
+
+# Datasets & caches (large; mounted at run time instead).
+data/raw/
+data/processed/
+data/splits/
+*.jsonl
+*.parquet
+*.arrow
+.cache/
+hf_cache/
+
+# Model weights, checkpoints & training outputs.
+checkpoints/
+checkpoint-*/
+adapters/
+output/
+outputs/
+runs/
+wandb/
+*.safetensors
+*.bin
+*.pt
+*.gguf
+
+# Git & editor noise.
+.git/
+.gitignore
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+
+# Docs that are irrelevant to the runtime image.
+docs/*.pdf
