@@ -1,48 +1,44 @@
 #!/usr/bin/env bash
 # =============================================================================
-# train.sh — thin wrapper that will invoke Soup
+# train.sh — THIN wrapper: runs Soup inside Docker
 # =============================================================================
 #
-# STATUS: PLACEHOLDER. Launches nothing and exits non-zero on purpose.
+# This script contains NO training logic. Soup owns the training loop, QLoRA,
+# model loading, quantization and checkpointing. This wrapper only:
+#   1. runs `soup doctor` to validate the environment, then
+#   2. hands soup.yaml to `soup train` inside the container.
 #
-# THIS SCRIPT MUST STAY THIN.
-#   Soup owns the training loop, the QLoRA implementation, model loading,
-#   quantization, checkpointing, and all GPU/training infrastructure. This
-#   wrapper only:
-#     - checks preconditions
-#     - passes soup.yaml and the prepared datasets to Soup
-#     - records what was run, for reproducibility
+# It never installs Soup on the host and never duplicates Soup functionality.
 #
-#   It must NEVER reimplement, patch, or duplicate Soup functionality, and Soup
-#   must NEVER be cloned or vendored into this repository.
+# Usage:
+#   ./scripts/train.sh                       # doctor, then train with soup.yaml
+#   ./scripts/train.sh --tensorboard         # extra args go straight to `soup train`
+#   CONFIG=configs/releases/v1.0.yaml ./scripts/train.sh
 #
-# Inputs (when implemented):
-#   soup.yaml             training configuration
-#   data/train.jsonl      built by scripts/prepare_data.sh
-#   data/retention.jsonl  replay/rehearsal data
+# Training uses the GPU-reserving `soup` service. A host without an NVIDIA
+# adapter will fail here by design — that is a real missing prerequisite, not
+# something to work around: a 27B QLoRA run needs the GPU.
 #
-# Outputs: adapters/checkpoints/logs, written OUTSIDE Git (see .gitignore).
+# Outputs land under /workspace inside the container, which is this repository
+# on the host (see docker-compose.yml), so checkpoints appear directly here.
 # =============================================================================
 
 set -euo pipefail
 
-# -----------------------------------------------------------------------------
-# TODO: implement, in this order.
-# -----------------------------------------------------------------------------
-# [ ] Verify Soup is installed and record its version/commit SHA.
-# [ ] Load .env (HF_TOKEN, output dir, HF cache, tracking keys). Never log
-#     secret values.
-# [ ] Verify soup.yaml exists and is a real configuration, not the placeholder.
-# [ ] Verify data/train.jsonl and data/retention.jsonl exist and are non-empty;
-#     fail with a pointer to prepare_data.sh otherwise.
-# [ ] SAFETY GATE: refuse to start if any evaluation set is reachable from the
-#     resolved training inputs. TounsiBench and the retention EVAL set are
-#     evaluation-only.
-# [ ] Snapshot the run context for reproducibility: git commit of this repo,
-#     Soup commit, resolved config, dataset checksums, GPU/driver info.
-# [ ] Hand off to Soup with soup.yaml, forwarding any extra CLI arguments.
-# [ ] Do not post-process checkpoints here; releasing is scripts/release.sh.
+# Always operate from the repository root so `docker compose` finds its files.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-echo "train.sh: not implemented yet (repository scaffolding stage)." >&2
-echo "Soup is an external dependency; see docs/TRAINING.md and soup.yaml." >&2
-exit 1
+# Config path as seen INSIDE the container (repo root is mounted at /workspace).
+CONFIG="${CONFIG:-soup.yaml}"
+
+# `docker compose` (v2 plugin) is the invocation verified for this project.
+COMPOSE=(docker compose)
+
+# GPU service. Overridable only for deliberate, documented exceptions.
+SERVICE="${SERVICE:-soup}"
+
+echo "==> [1/2] soup doctor (environment check)"
+"${COMPOSE[@]}" run --rm "$SERVICE" soup doctor
+
+echo "==> [2/2] soup train --config /workspace/${CONFIG}"
+"${COMPOSE[@]}" run --rm "$SERVICE" soup train --config "/workspace/${CONFIG}" "$@"
