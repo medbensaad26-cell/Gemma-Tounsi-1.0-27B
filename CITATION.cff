@@ -14,7 +14,7 @@ license: Apache-2.0
 # TODO: replace the placeholder entity author with the individual authors
 # (given-names / family-names / orcid / affiliation) before the v1.0 release.
 authors:
-  - name: "The Gemma Tounsi Project Contributors"
+  - name: "Mohamed BENSAAD & Haitham NASR"
 
 repository-code: "https://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B"
 
