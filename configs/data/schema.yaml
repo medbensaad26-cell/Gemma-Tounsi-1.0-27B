@@ -1,0 +1,125 @@
+# =============================================================================
+# configs/data/schema.yaml — canonical internal training-example schema
+# =============================================================================
+#
+# This is the SINGLE SOURCE OF TRUTH for the shape of every internal training
+# example in Gemma Tounsi 1.0, from the moment raw data is canonicalized until
+# the final Soup-compatible JSONL is emitted.
+#
+# It is intentionally dataset-INDEPENDENT: no external corpus is named here, and
+# no external schema is assumed. Dataset-specific adapters are added LATER (Task
+# 4B onward) and must normalize INTO this schema rather than change it.
+#
+# The Python validator (src/data/schema.py + src/data/validate.py) reads this
+# file so that the accepted values below and the code never drift apart.
+#
+# Human-readable documentation of every field lives in docs/DATA_SCHEMA.md.
+# =============================================================================
+
+schema_version: "1.0"
+
+# --- Record shape ------------------------------------------------------------
+# One canonical example == one JSON object on one line of a UTF-8 JSONL file.
+record:
+  required_fields:
+    - id           # globally unique, stable, non-empty string
+    - messages     # non-empty ordered chat turns (see `messages` below)
+    - category     # top-level technical/functional category (see enums)
+    - source       # provenance tag: where this example came from
+    - language     # primary language of the example (see enums)
+
+  optional_fields:
+    - subcategory      # free-but-recommended finer label under `category`
+    - script           # writing system (see `script` enum)
+    - code_switching   # bool: does the example mix languages/scripts?
+    - difficulty       # coarse difficulty band (see `difficulty` enum)
+    - quality          # quality flags block (see `quality` enum)
+    - variation_group  # id linking orthographic/paraphrase variants together
+
+# --- messages ----------------------------------------------------------------
+messages:
+  min_turns: 2                 # at least one user turn + one assistant turn
+  roles:
+    allowed: [system, user, assistant]
+  ordering:
+    # `system` may appear only as the FIRST turn (0 or 1 time).
+    system_first_only: true
+    # The first non-system turn must be `user`.
+    first_non_system_role: user
+    # After the optional system turn, user/assistant must strictly alternate.
+    strict_alternation: true
+    # The conversation must END on an assistant turn (the training target).
+    last_role: assistant
+  content:
+    non_empty: true            # every turn's content must be a non-empty string
+
+# --- id ----------------------------------------------------------------------
+id:
+  type: string
+  non_empty: true
+  unique: true                 # duplicate ids across a file are an ERROR
+  # Advisory pattern only (not hard-enforced): "<source>-<slice>-<n>".
+  pattern: "^[A-Za-z0-9._:-]+$"
+
+# --- Controlled vocabularies (enums) -----------------------------------------
+# The validator treats values outside these lists as errors, NOT warnings,
+# so that unexpected labels surface immediately instead of silently passing.
+enums:
+  # Top-level technical/functional tagging. Required on every record.
+  category:
+    - mathematics
+    - reasoning
+    - coding
+    - general_instruction
+    - knowledge_qa
+
+  # The three categories that count toward the cross-cutting technical quota
+  # inside the Arabizi and Arabic-script Derja slices.
+  technical_categories:
+    - mathematics
+    - reasoning
+    - coding
+
+  # Primary language of the example. `language` is required.
+  language:
+    - arabizi        # Latin-script Tunisian Arabic (Derja written with Latin letters/numerals)
+    - ar             # Arabic script (Derja or MSA — disambiguated by `script`/slice)
+    - fr             # French (Franco-Tunisian / code-switched)
+    - en             # English (primarily the retention slice)
+    - mixed          # genuinely mixed with no single dominant language
+
+  # Writing system. Optional, but strongly recommended for Tunisian slices.
+  script:
+    - latin
+    - arabic
+    - mixed
+
+  # Coarse difficulty band. Optional.
+  difficulty:
+    - easy
+    - medium
+    - hard
+
+  # Quality flag block. Optional. Each key is a boolean; absence == unknown.
+  quality:
+    - reviewed         # a human reviewed this example
+    - native_authored  # authored by a native Tunisian contributor
+    - synthetic        # machine-generated (e.g. this task's test fixtures)
+    - flagged          # something is suspect; excluded from final mixtures
+
+# --- Project slices ----------------------------------------------------------
+# The canonical schema must be able to represent EVERY current project slice.
+# `source` is a free string, but each processed example ultimately belongs to
+# exactly one slice for mixture accounting. These are the slice identifiers.
+slices:
+  - arabizi          # 0.35 of the training cocktail
+  - arabic_derja     # 0.25
+  - franco_tunisian  # 0.12
+  - msa_formal       # 0.08 — formal/register coverage (NOT retention)
+  - retention        # 0.20 — English capability preservation (NOT Tunisian)
+
+# --- Notes -------------------------------------------------------------------
+# * retention  == preservation of Gemma's original (mostly English) general
+#                 capabilities. It is NOT a Tunisian-language dataset.
+# * msa_formal == Modern Standard / formal Arabic register coverage. It is a
+#                 SEPARATE purpose from retention and is never counted as it.

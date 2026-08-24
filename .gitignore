@@ -252,6 +252,16 @@ data/splits/*
 data/train.jsonl
 data/retention.jsonl
 
+# Human-authored Tunisian data: keep the directory skeleton, ignore the content
+# until contributors' work is reviewed and explicitly added.
+data/authored/**/*.jsonl
+!data/authored/**/.gitkeep
+
+# Provenance manifests are small metadata and ARE tracked, but generated
+# selection manifests are outputs.
+data/manifests/**/*selection*.json
+
+
 # Any stray dataset dumps anywhere in the tree.
 *.jsonl
 *.arrow
@@ -262,6 +272,13 @@ data/retention.jsonl
 *.txt.gz
 *.jsonl.gz
 *.zst
+
+# EXCEPTION: the synthetic test fixtures are tiny, deterministic, and required
+# by the test suite, so they are tracked. They are NOT training data — see
+# data/synthetic/generate.py, which can regenerate them byte-identically.
+!data/synthetic/raw/*.jsonl
+!data/synthetic/expected/*.json
+
 
 # Evaluation tracks: keep definitions/metadata, drop bulk data & results.
 # Task specs and scoring logic under eval/**/tasks/ and eval/**/scoring/ stay
