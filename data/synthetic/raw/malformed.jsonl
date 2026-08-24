@@ -1,0 +1,12 @@
+{"category": "mathematics", "id": "syn-bad-000-valid-control", "language": "en", "messages": [{"content": "Synthetic placeholder: control record that is fully valid.", "role": "user"}, {"content": "Synthetic placeholder: this one must pass validation.", "role": "assistant"}], "quality": {"synthetic": true}, "source": "synthetic_malformed"}
+{"id": "syn-bad-001-broken-json", "messages": [
+["syn-bad-002-not-an-object"]
+{"id": "syn-bad-003-missing-fields", "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}]}
+{"id": "syn-bad-004-invalid-category", "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}], "category": "poetry_slam", "source": "synthetic_malformed", "language": "en"}
+{"id": "syn-bad-005-invalid-language", "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}], "category": "reasoning", "source": "synthetic_malformed", "language": "klingon"}
+{"id": "syn-bad-006-empty-messages", "messages": [], "category": "reasoning", "source": "synthetic_malformed", "language": "en"}
+{"id": "syn-bad-007-invalid-role", "messages": [{"role": "wizard", "content": "hi"}, {"role": "assistant", "content": "hello"}], "category": "reasoning", "source": "synthetic_malformed", "language": "en"}
+{"id": "syn-bad-008-bad-ordering", "messages": [{"role": "assistant", "content": "answer first"}, {"role": "user", "content": "question after"}], "category": "reasoning", "source": "synthetic_malformed", "language": "en"}
+{"id": "syn-bad-009-empty-content", "messages": [{"role": "user", "content": "   "}, {"role": "assistant", "content": "hello"}], "category": "reasoning", "source": "synthetic_malformed", "language": "en"}
+{"id": "", "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}], "category": "reasoning", "source": "synthetic_malformed", "language": "en"}
+{"id": "syn-bad-011-bad-metadata", "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}], "category": "reasoning", "source": "synthetic_malformed", "language": "en", "script": "cuneiform", "vibes": "immaculate"}

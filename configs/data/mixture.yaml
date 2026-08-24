@@ -1,0 +1,88 @@
+# =============================================================================
+# configs/data/mixture.yaml — official project-wide training cocktail
+# =============================================================================
+#
+# This file is the AUTHORITATIVE definition of the Gemma Tounsi 1.0 training
+# mixture. The mixture validator (src/data/mixture.py) reads it and refuses to
+# proceed if any constraint below is violated. Values here are DECISIONS, not
+# placeholders: do not silently change them or silently rebalance at run time.
+#
+# DATASET-INDEPENDENT BY DESIGN
+#   Slices are logical, not datasets. No external dataset is named here.
+#
+# CONSUMED BY
+#   src/data/mixture.py
+#   scripts/prepare_data.sh
+# =============================================================================
+
+spec_version: "1.0"
+
+# --- The current official training cocktail ----------------------------------
+# Shares are fractions of the FINAL training mixture and must sum to exactly 1.0.
+slices:
+  arabizi: 0.35          # Latin-script Tunisian Arabic (largest slice)
+  arabic_derja: 0.25     # Derja written in Arabic script
+  franco_tunisian: 0.12  # French / Tunisian code-switching
+  msa_formal: 0.08       # Modern Standard / formal Arabic — register coverage
+  retention: 0.20        # English capability preservation (replay/rehearsal)
+
+# --- Cross-cutting technical quota -------------------------------------------
+# Inside BOTH the arabizi and arabic_derja slices, at least this fraction of
+# examples must be technical (mathematics / reasoning / coding). This is a
+# MINIMUM (>=), checked against the actual processed slice contents.
+cross_cutting:
+  arabizi_technical_min: 0.20
+  derja_technical_min: 0.20
+
+# Categories that count as "technical" for the quota above. These must match
+# enums.technical_categories in configs/data/schema.yaml.
+technical_categories:
+  - mathematics
+  - reasoning
+  - coding
+
+# --- Slice semantics (so purposes are never conflated) -----------------------
+# Documented and asserted by tests: msa_formal is NOT retention, and retention
+# is NOT Tunisian adaptation.
+slice_semantics:
+  arabizi:          tunisian_adaptation
+  arabic_derja:     tunisian_adaptation
+  franco_tunisian:  tunisian_adaptation
+  msa_formal:       formal_register_coverage      # NOT retention
+  retention:        english_capability_preservation  # NOT Tunisian adaptation
+
+# Slices that carry the cross-cutting technical quota.
+technical_quota_slices:
+  - arabizi
+  - arabic_derja
+
+# --- Validation constraints (enforced by src/data/mixture.py) ----------------
+validation:
+  # 1. Slice shares must sum to 1.0 (within a tiny float tolerance).
+  require_total: 1.0
+  total_tolerance: 1.0e-6
+
+  # 2. Every one of these slices must be present in the mixture.
+  required_slices:
+    - arabizi
+    - arabic_derja
+    - franco_tunisian
+    - msa_formal
+    - retention
+
+  # 3. Requested per-slice counts must be feasible against available data
+  #    (checked at run time against the processed datasets, not here).
+  require_feasible_counts: true
+
+  # 4 & 5. Technical minimums must hold for arabizi and arabic_derja.
+  enforce_technical_minimums: true
+
+  # 6 & 7. Retention is its own slice; msa_formal is never counted as retention.
+  retention_is_separate_slice: true
+  msa_is_not_retention: true
+
+  # 8. No evaluation/holdout record may leak into any training slice.
+  forbid_holdout_in_training: true
+
+  # On any failure: return a clear error and STOP. Never auto-rebalance.
+  on_violation: error

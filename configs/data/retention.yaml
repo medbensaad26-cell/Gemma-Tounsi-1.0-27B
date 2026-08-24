@@ -1,0 +1,105 @@
+# =============================================================================
+# configs/data/retention.yaml — retention slice specification
+# =============================================================================
+#
+# PURPOSE
+#   The retention slice exists to PRESERVE Gemma 3 27B's ORIGINAL general
+#   capabilities after Tunisian adaptation. It is replay/rehearsal data.
+#
+#   It is *** NOT *** a Tunisian-language dataset.
+#   It does *** NOT *** require Tunisian output.
+#   It is NEVER confused with the msa_formal slice, whose purpose is
+#   formal/register coverage of Arabic (see configs/data/mixture.yaml).
+#
+#   Retention is 0.20 of the training cocktail and is primarily ENGLISH.
+#
+# DATASET-INDEPENDENT BY DESIGN
+#   No external dataset is named here. Candidate pools are supplied at run time
+#   as canonical JSONL (see docs/DATA_SCHEMA.md); the selector in
+#   src/data/retention.py reads THIS file for its targets, never a dataset name.
+#
+# CONSUMED BY
+#   src/data/retention.py  (selection + stratified sampling + holdout)
+#   scripts/prepare_data.sh
+# =============================================================================
+
+spec_version: "1.0"
+slice: retention
+
+# --- Purpose (machine-readable, so tests can assert it) ----------------------
+purpose: english_capability_preservation
+is_tunisian_adaptation: false      # MUST stay false. Retention != adaptation.
+requires_tunisian_output: false    # MUST stay false.
+
+# --- Size --------------------------------------------------------------------
+# Final number of retention TRAINING examples.
+target_examples: 20000
+
+# --- Per-category targets ----------------------------------------------------
+# Sums to exactly target_examples (5000+5000+4000+3000+3000 = 20000).
+# The selector enforces these as HARD targets: it never falls back to
+# unconstrained random sampling.
+categories:
+  mathematics: 5000
+  coding: 5000
+  reasoning: 4000
+  instruction_following: 3000
+  knowledge_qa: 3000
+
+# Maps the target keys above onto the canonical `category` enum in
+# configs/data/schema.yaml. Only `instruction_following` needs a mapping:
+# the canonical category name is `general_instruction`.
+category_aliases:
+  instruction_following: general_instruction
+
+# --- Language ----------------------------------------------------------------
+language:
+  primary: english
+  # Canonical `language` values accepted inside this slice.
+  allowed: [en]
+  # Retention is a capability guard, so it stays monolingual English by default.
+  allow_other_languages: false
+
+# --- Holdout -----------------------------------------------------------------
+# Reserved BEFORE training selection and never included in training.
+holdout:
+  target_examples: 2500
+  # Holdout is carved out per category in the same proportions as `categories`,
+  # so the holdout is representative rather than skewed to one capability.
+  stratified: true
+  # Emitted to data/processed/retention/holdout.jsonl
+  output: data/processed/retention/holdout.jsonl
+
+# --- Output ------------------------------------------------------------------
+output:
+  train: data/processed/retention/train.jsonl
+  holdout: data/processed/retention/holdout.jsonl
+  manifest: data/manifests/retention/selection.json
+
+# --- Selection behaviour -----------------------------------------------------
+selection:
+  # Deterministic: same candidates + same seed => byte-identical output.
+  seed: 42
+  # Stratify by category (hard targets above), then diversify by source.
+  stratify_by: category
+  # Source diversity: no single `source` may exceed this share of a category.
+  # 1.0 disables the cap; it is intentionally loose here because the real
+  # candidate pools are not known yet. Tighten once real data is inspected.
+  max_share_per_source: 1.0
+  # Records flagged by quality.flagged are never selected.
+  exclude_flagged: true
+  # Deduplicate by id before selecting (see src/data/dedupe.py).
+  require_unique_ids: true
+  # If a category cannot be filled, FAIL LOUDLY rather than under-filling or
+  # borrowing from another category.
+  on_insufficient_candidates: error
+
+# --- Rules (documented, asserted by tests) -----------------------------------
+rules:
+  - "Primarily English: the retention slice preserves the base model's capabilities."
+  - "Preserve general capabilities: mathematics, coding, reasoning, instruction following, knowledge QA."
+  - "Do NOT require Tunisian output; Tunisian ability comes from the other four slices."
+  - "Retention TRAINING data is disjoint from the retention EVALUATION set in eval/retention/."
+  - "Holdout is reserved first and is never part of the training file."
+  - "Selection is deterministic and reproducible from this file + the seed."
+  - "No external dataset is named in this file; adapters normalize into the canonical schema."
