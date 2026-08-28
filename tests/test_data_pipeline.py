@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -396,6 +397,116 @@ class TestRetentionSelection:
         assert manifest["train"]["total"] == 200
         assert manifest["holdout"]["total"] == 25
         assert manifest["deterministic"] is True
+
+    def test_schema_reference_is_declared(self) -> None:
+        """The spec must commit to the exact canonical schema document."""
+        raw = yaml.safe_load((CONFIGS / "retention.yaml").read_text(encoding="utf-8"))
+        assert raw["schema"]["file"] == "configs/data/schema.yaml"
+        assert raw["schema"]["docs"] == "docs/DATA_SCHEMA.md"
+        assert raw["schema"]["required_fields"] == [
+            "id",
+            "messages",
+            "category",
+            "source",
+            "language",
+        ]
+
+    def test_quality_gate_is_declared(self) -> None:
+        """Task 1 quality rules must be machine-readable, not just comments."""
+        raw = yaml.safe_load((CONFIGS / "retention.yaml").read_text(encoding="utf-8"))
+        quality = raw["quality"]
+        assert quality["required_schema_valid"] is True
+        assert quality["exclude_flagged"] is True
+        assert quality["language_allowed"] == ["en"]
+        assert quality["script_allowed"] == ["latin"]
+        assert quality["require_unique_ids"] is True
+        assert quality["dedupe_before_selection"] is True
+        assert quality["min_messages_turns"] == 2
+        assert quality["end_with_assistant"] is True
+
+
+# --------------------------------------------------------------------------- #
+# 4b. MSA specification (Task 1)
+# --------------------------------------------------------------------------- #
+
+
+class TestMSASpecification:
+    """configs/data/msa.yaml — the formal Arabic register slice."""
+
+    @pytest.fixture
+    def msa_raw(self) -> Dict[str, Any]:
+        return yaml.safe_load((CONFIGS / "msa.yaml").read_text(encoding="utf-8"))
+
+    def test_spec_matches_the_official_specification(
+        self, msa_raw: Dict[str, Any]
+    ) -> None:
+        assert msa_raw["target_examples"] == 8000
+        assert msa_raw["categories"] == {
+            "knowledge_qa": 3000,
+            "instruction_following": 2500,
+            "mathematics": 1000,
+            "reasoning": 1000,
+            "coding": 500,
+        }
+        assert sum(msa_raw["categories"].values()) == 8000
+        assert msa_raw["holdout"]["target_examples"] == 1000
+
+    def test_msa_is_formal_register_not_retention(
+        self, msa_raw: Dict[str, Any]
+    ) -> None:
+        assert msa_raw["purpose"] == "formal_register_coverage"
+        assert msa_raw["is_tunisian_adaptation"] is False
+        assert msa_raw["requires_tunisian_output"] is False
+
+    def test_language_and_script_are_enforced(self, msa_raw: Dict[str, Any]) -> None:
+        assert msa_raw["language"]["allowed"] == ["ar"]
+        assert msa_raw["language"]["allow_other_languages"] is False
+        assert msa_raw["script"]["allowed"] == ["arabic"]
+
+    def test_quality_gate_is_declared(self, msa_raw: Dict[str, Any]) -> None:
+        quality = msa_raw["quality"]
+        assert quality["required_schema_valid"] is True
+        assert quality["exclude_flagged"] is True
+        assert quality["language_allowed"] == ["ar"]
+        assert quality["script_allowed"] == ["arabic"]
+        assert quality["require_unique_ids"] is True
+        assert quality["dedupe_before_selection"] is True
+        assert quality["min_messages_turns"] == 2
+        assert quality["end_with_assistant"] is True
+
+    def test_schema_reference_is_declared(self, msa_raw: Dict[str, Any]) -> None:
+        assert msa_raw["schema"]["file"] == "configs/data/schema.yaml"
+        assert msa_raw["schema"]["docs"] == "docs/DATA_SCHEMA.md"
+        assert msa_raw["schema"]["required_fields"] == [
+            "id",
+            "messages",
+            "category",
+            "source",
+            "language",
+        ]
+
+    def test_config_targets_map_to_canonical_categories(
+        self, msa_raw: Dict[str, Any]
+    ) -> None:
+        aliases = msa_raw.get("category_aliases") or {}
+        resolved = {
+            aliases.get(name, name): count
+            for name, count in msa_raw["categories"].items()
+        }
+        assert resolved["general_instruction"] == 2500
+        assert "instruction_following" not in resolved
+        assert sum(resolved.values()) == 8000
+
+    def test_selection_is_deterministic_and_fails_loud(
+        self, msa_raw: Dict[str, Any]
+    ) -> None:
+        selection = msa_raw["selection"]
+        assert selection["seed"] == 42
+        assert selection["on_insufficient_candidates"] == "error"
+        assert selection["require_unique_ids"] is True
+
+    def test_rules_declare_retention_separation(self, msa_raw: Dict[str, Any]) -> None:
+        assert any("never counted as retention" in rule for rule in msa_raw["rules"])
 
 
 # --------------------------------------------------------------------------- #

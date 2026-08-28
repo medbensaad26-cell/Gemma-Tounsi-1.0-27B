@@ -1,0 +1,148 @@
+# =============================================================================
+# configs/data/msa.yaml — MSA (Modern Standard Arabic) slice specification
+# =============================================================================
+#
+# PURPOSE
+#   The msa_formal slice exists to provide FORMAL / REGISTER coverage of
+#   Modern Standard Arabic (MSA / الفصحى). It is the formal-register counterpart
+#   to the Tunisian Derja slices (arabizi, arabic_derja, franco_tunisian).
+#
+#   It is *** NOT *** a Tunisian dialect dataset.
+#   It is *** NOT *** the retention slice: retention is English capability
+#   preservation (see configs/data/retention.yaml). MSA and retention are
+#   SEPARATE purposes and are NEVER counted as each other in the mixture
+#   (see configs/data/mixture.yaml — msa_formal is 0.08 of the cocktail).
+#
+# SIZE
+#   Final MSA TRAINING examples: 8,000 (0.08 of the training cocktail).
+#
+# DATASET-INDEPENDENT BY DESIGN
+#   No external dataset is named here. Candidate pools are supplied at run time
+#   as canonical JSONL (see docs/DATA_SCHEMA.md); the selector reads THIS file
+#   for its targets, never a dataset name.
+#
+# CONSUMED BY
+#   scripts/prepare_data.sh
+#   mixture validation (configs/data/mixture.yaml)
+# =============================================================================
+
+spec_version: "1.0"
+slice: msa_formal
+
+# --- Purpose (machine-readable, so tests can assert it) ----------------------
+purpose: formal_register_coverage
+is_tunisian_adaptation: false      # MUST stay false. MSA is NOT Tunisian Derja.
+requires_tunisian_output: false    # MUST stay false. MSA output is formal Arabic.
+
+# --- Required schema ---------------------------------------------------------
+# The canonical schema is the ONLY accepted input shape. Records that fail
+# schema validation are REJECTED, never coerced or auto-fixed.
+schema:
+  file: configs/data/schema.yaml
+  docs: docs/DATA_SCHEMA.md
+  required_fields: [id, messages, category, source, language]
+  messages:
+    min_turns: 2
+    roles: [system, user, assistant]
+    last_role: assistant
+    non_empty_content: true
+
+# --- Size --------------------------------------------------------------------
+# Final number of MSA TRAINING examples.
+target_examples: 8000
+
+# --- Per-category targets ----------------------------------------------------
+# Sums to exactly target_examples (3000+2500+1000+1000+500 = 8000).
+# The selector enforces these as HARD targets: it never falls back to
+# unconstrained random sampling.
+#
+# MSA is primarily a formal-register / knowledge slice:
+#   - knowledge_qa is the largest block (formal knowledge, science, society,
+#     history, general culture written in formal Arabic);
+#   - general_instruction keeps the model able to follow instructions in MSA;
+#   - mathematics / reasoning / coding provide technical capability in formal
+#     Arabic (most Arabic technical/educational content is written in MSA).
+categories:
+  knowledge_qa: 3000
+  instruction_following: 2500
+  mathematics: 1000
+  reasoning: 1000
+  coding: 500
+
+# Maps the target keys above onto the canonical `category` enum in
+# configs/data/schema.yaml. Only `instruction_following` needs a mapping:
+# the canonical category name is `general_instruction`.
+category_aliases:
+  instruction_following: general_instruction
+
+# --- Language ----------------------------------------------------------------
+language:
+  primary: arabic
+  # Canonical `language` values accepted inside this slice.
+  allowed: [ar]
+  # MSA must be written in the Arabic script and is not code-switched by design.
+  allow_other_languages: false
+
+# --- Script ------------------------------------------------------------------
+script:
+  # Canonical `script` value(s) accepted inside this slice.
+  allowed: [arabic]
+
+# --- Quality gate ------------------------------------------------------------
+# Machine-readable quality rules asserted by tests. The selector enforces these
+# on every candidate BEFORE selection; nothing is auto-fixed or downgraded.
+quality:
+  required_schema_valid: true   # hard reject any schema-invalid record
+  exclude_flagged: true         # quality.flagged == true is never selected
+  language_allowed: [ar]        # mirrors `language.allowed`
+  script_allowed: [arabic]      # MSA is Arabic-script formal Arabic
+  require_unique_ids: true      # dedupe by id before selection (first wins)
+  dedupe_before_selection: true
+  min_messages_turns: 2
+  end_with_assistant: true
+
+# --- Holdout -----------------------------------------------------------------
+# Reserved BEFORE training selection and never included in training.
+holdout:
+  target_examples: 1000
+  # Holdout is carved out per category in the same proportions as `categories`,
+  # so the holdout is representative rather than skewed to one capability.
+  stratified: true
+  # Emitted to data/processed/msa/holdout.jsonl
+  output: data/processed/msa/holdout.jsonl
+
+# --- Output ------------------------------------------------------------------
+output:
+  train: data/processed/msa/train.jsonl
+  holdout: data/processed/msa/holdout.jsonl
+  manifest: data/manifests/msa/selection.json
+
+# --- Selection behaviour -----------------------------------------------------
+selection:
+  # Deterministic: same candidates + same seed => byte-identical output.
+  seed: 42
+  # Stratify by category (hard targets above), then diversify by source.
+  stratify_by: category
+  # Source diversity: no single `source` may exceed this share of a category.
+  # 1.0 disables the cap; it is intentionally loose here because the real
+  # candidate pools are not known yet. Tighten once real data is inspected.
+  max_share_per_source: 1.0
+  # Records flagged by quality.flagged are never selected.
+  exclude_flagged: true
+  # Deduplicate by id before selecting (see src/data/dedupe.py).
+  require_unique_ids: true
+  # If a category cannot be filled, FAIL LOUDLY rather than under-filling or
+  # borrowing from another category.
+  on_insufficient_candidates: error
+
+# --- Rules (documented, asserted by tests) -----------------------------------
+rules:
+  - "Required schema: every record must satisfy configs/data/schema.yaml (see docs/DATA_SCHEMA.md)."
+  - "Quality gate: records flagged by quality.flagged are never selected."
+  - "Formal register: MSA covers Modern Standard / formal Arabic, NOT Tunisian Derja."
+  - "Arabic script: every MSA record must use canonical language 'ar' and script 'arabic'."
+  - "MSA is a SEPARATE purpose from retention and is never counted as retention."
+  - "MSA TRAINING data is disjoint from the MSA EVALUATION set in eval/."
+  - "Holdout is reserved first and is never part of the training file."
+  - "Selection is deterministic and reproducible from this file + the seed."
+  - "No external dataset is named in this file; adapters normalize into the canonical schema."

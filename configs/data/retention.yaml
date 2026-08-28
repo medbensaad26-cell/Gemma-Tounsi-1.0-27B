@@ -23,13 +23,26 @@
 #   scripts/prepare_data.sh
 # =============================================================================
 
-spec_version: "1.0"
+spec_version: "1.1"
 slice: retention
 
 # --- Purpose (machine-readable, so tests can assert it) ----------------------
 purpose: english_capability_preservation
 is_tunisian_adaptation: false      # MUST stay false. Retention != adaptation.
 requires_tunisian_output: false    # MUST stay false.
+
+# --- Required schema ---------------------------------------------------------
+# The canonical schema is the ONLY accepted input shape. Records that fail
+# schema validation are REJECTED, never coerced or auto-fixed.
+schema:
+  file: configs/data/schema.yaml
+  docs: docs/DATA_SCHEMA.md
+  required_fields: [id, messages, category, source, language]
+  messages:
+    min_turns: 2
+    roles: [system, user, assistant]
+    last_role: assistant
+    non_empty_content: true
 
 # --- Size --------------------------------------------------------------------
 # Final number of retention TRAINING examples.
@@ -59,6 +72,19 @@ language:
   allowed: [en]
   # Retention is a capability guard, so it stays monolingual English by default.
   allow_other_languages: false
+
+# --- Quality gate ------------------------------------------------------------
+# Machine-readable quality rules asserted by tests. The selector enforces these
+# on every candidate BEFORE selection; nothing is auto-fixed or downgraded.
+quality:
+  required_schema_valid: true   # hard reject any schema-invalid record
+  exclude_flagged: true         # quality.flagged == true is never selected
+  language_allowed: [en]        # mirrors `language.allowed`
+  script_allowed: [latin]       # English retention is Latin-script
+  require_unique_ids: true      # dedupe by id before selection (first wins)
+  dedupe_before_selection: true
+  min_messages_turns: 2
+  end_with_assistant: true
 
 # --- Holdout -----------------------------------------------------------------
 # Reserved BEFORE training selection and never included in training.
@@ -96,6 +122,8 @@ selection:
 
 # --- Rules (documented, asserted by tests) -----------------------------------
 rules:
+  - "Required schema: every record must satisfy configs/data/schema.yaml (see docs/DATA_SCHEMA.md)."
+  - "Quality gate: records flagged by quality.flagged are never selected."
   - "Primarily English: the retention slice preserves the base model's capabilities."
   - "Preserve general capabilities: mathematics, coding, reasoning, instruction following, knowledge QA."
   - "Do NOT require Tunisian output; Tunisian ability comes from the other four slices."
