@@ -1,35 +1,38 @@
 # =============================================================================
-# configs/data/retention.yaml — retention slice specification
+# configs/data/msa.yaml — MSA (Modern Standard Arabic) slice specification
 # =============================================================================
 #
 # PURPOSE
-#   The retention slice exists to PRESERVE Gemma 3 27B's ORIGINAL general
-#   capabilities after Tunisian adaptation. It is replay/rehearsal data.
+#   The msa_formal slice exists to provide FORMAL / REGISTER coverage of
+#   Modern Standard Arabic (MSA / الفصحى). It is the formal-register counterpart
+#   to the Tunisian Derja slices (arabizi, arabic_derja, franco_tunisian).
 #
-#   It is *** NOT *** a Tunisian-language dataset.
-#   It does *** NOT *** require Tunisian output.
-#   It is NEVER confused with the msa_formal slice, whose purpose is
-#   formal/register coverage of Arabic (see configs/data/mixture.yaml).
+#   It is *** NOT *** a Tunisian dialect dataset.
+#   It is *** NOT *** the retention slice: retention is English capability
+#   preservation (see configs/data/retention.yaml). MSA and retention are
+#   SEPARATE purposes and are NEVER counted as each other in the mixture
+#   (see configs/data/mixture.yaml — msa_formal is 0.08 of the cocktail).
 #
-#   Retention is 0.20 of the training cocktail and is primarily ENGLISH.
+# SIZE
+#   Final MSA TRAINING examples: 8,000 (0.08 of the training cocktail).
 #
 # DATASET-INDEPENDENT BY DESIGN
 #   No external dataset is named here. Candidate pools are supplied at run time
-#   as canonical JSONL (see docs/DATA_SCHEMA.md); the selector in
-#   src/data/retention.py reads THIS file for its targets, never a dataset name.
+#   as canonical JSONL (see docs/DATA_SCHEMA.md); the selector reads THIS file
+#   for its targets, never a dataset name.
 #
 # CONSUMED BY
-#   src/data/retention.py  (selection + stratified sampling + holdout)
 #   scripts/prepare_data.sh
+#   mixture validation (configs/data/mixture.yaml)
 # =============================================================================
 
-spec_version: "1.1"
-slice: retention
+spec_version: "1.0"
+slice: msa_formal
 
 # --- Purpose (machine-readable, so tests can assert it) ----------------------
-purpose: english_capability_preservation
-is_tunisian_adaptation: false      # MUST stay false. Retention != adaptation.
-requires_tunisian_output: false    # MUST stay false.
+purpose: formal_register_coverage
+is_tunisian_adaptation: false      # MUST stay false. MSA is NOT Tunisian Derja.
+requires_tunisian_output: false    # MUST stay false. MSA output is formal Arabic.
 
 # --- Required schema ---------------------------------------------------------
 # The canonical schema is the ONLY accepted input shape. Records that fail
@@ -45,19 +48,26 @@ schema:
     non_empty_content: true
 
 # --- Size --------------------------------------------------------------------
-# Final number of retention TRAINING examples.
-target_examples: 20000
+# Final number of MSA TRAINING examples.
+target_examples: 8000
 
 # --- Per-category targets ----------------------------------------------------
-# Sums to exactly target_examples (5000+5000+4000+3000+3000 = 20000).
+# Sums to exactly target_examples (3000+2500+1000+1000+500 = 8000).
 # The selector enforces these as HARD targets: it never falls back to
 # unconstrained random sampling.
+#
+# MSA is primarily a formal-register / knowledge slice:
+#   - knowledge_qa is the largest block (formal knowledge, science, society,
+#     history, general culture written in formal Arabic);
+#   - general_instruction keeps the model able to follow instructions in MSA;
+#   - mathematics / reasoning / coding provide technical capability in formal
+#     Arabic (most Arabic technical/educational content is written in MSA).
 categories:
-  mathematics: 5000
-  coding: 5000
-  reasoning: 4000
-  instruction_following: 3000
   knowledge_qa: 3000
+  instruction_following: 2500
+  mathematics: 1000
+  reasoning: 1000
+  coding: 500
 
 # Maps the target keys above onto the canonical `category` enum in
 # configs/data/schema.yaml. Only `instruction_following` needs a mapping:
@@ -67,11 +77,16 @@ category_aliases:
 
 # --- Language ----------------------------------------------------------------
 language:
-  primary: english
+  primary: arabic
   # Canonical `language` values accepted inside this slice.
-  allowed: [en]
-  # Retention is a capability guard, so it stays monolingual English by default.
+  allowed: [ar]
+  # MSA must be written in the Arabic script and is not code-switched by design.
   allow_other_languages: false
+
+# --- Script ------------------------------------------------------------------
+script:
+  # Canonical `script` value(s) accepted inside this slice.
+  allowed: [arabic]
 
 # --- Quality gate ------------------------------------------------------------
 # Machine-readable quality rules asserted by tests. The selector enforces these
@@ -79,8 +94,8 @@ language:
 quality:
   required_schema_valid: true   # hard reject any schema-invalid record
   exclude_flagged: true         # quality.flagged == true is never selected
-  language_allowed: [en]        # mirrors `language.allowed`
-  script_allowed: [latin]       # English retention is Latin-script
+  language_allowed: [ar]        # mirrors `language.allowed`
+  script_allowed: [arabic]      # MSA is Arabic-script formal Arabic
   require_unique_ids: true      # dedupe by id before selection (first wins)
   dedupe_before_selection: true
   min_messages_turns: 2
@@ -89,18 +104,18 @@ quality:
 # --- Holdout -----------------------------------------------------------------
 # Reserved BEFORE training selection and never included in training.
 holdout:
-  target_examples: 2500
+  target_examples: 1000
   # Holdout is carved out per category in the same proportions as `categories`,
   # so the holdout is representative rather than skewed to one capability.
   stratified: true
-  # Emitted to data/processed/retention/holdout.jsonl
-  output: data/processed/retention/holdout.jsonl
+  # Emitted to data/processed/msa/holdout.jsonl
+  output: data/processed/msa/holdout.jsonl
 
 # --- Output ------------------------------------------------------------------
 output:
-  train: data/processed/retention/train.jsonl
-  holdout: data/processed/retention/holdout.jsonl
-  manifest: data/manifests/retention/selection.json
+  train: data/processed/msa/train.jsonl
+  holdout: data/processed/msa/holdout.jsonl
+  manifest: data/manifests/msa/selection.json
 
 # --- Selection behaviour -----------------------------------------------------
 selection:
@@ -124,10 +139,10 @@ selection:
 rules:
   - "Required schema: every record must satisfy configs/data/schema.yaml (see docs/DATA_SCHEMA.md)."
   - "Quality gate: records flagged by quality.flagged are never selected."
-  - "Primarily English: the retention slice preserves the base model's capabilities."
-  - "Preserve general capabilities: mathematics, coding, reasoning, instruction following, knowledge QA."
-  - "Do NOT require Tunisian output; Tunisian ability comes from the other four slices."
-  - "Retention TRAINING data is disjoint from the retention EVALUATION set in eval/retention/."
+  - "Formal register: MSA covers Modern Standard / formal Arabic, NOT Tunisian Derja."
+  - "Arabic script: every MSA record must use canonical language 'ar' and script 'arabic'."
+  - "MSA is a SEPARATE purpose from retention and is never counted as retention."
+  - "MSA TRAINING data is disjoint from the MSA EVALUATION set in eval/."
   - "Holdout is reserved first and is never part of the training file."
   - "Selection is deterministic and reproducible from this file + the seed."
   - "No external dataset is named in this file; adapters normalize into the canonical schema."
