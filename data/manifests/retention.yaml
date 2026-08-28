@@ -8,7 +8,10 @@
 #   existing instruction-following and reasoning capabilities are not degraded
 #   by Tunisian adaptation. Builds data/retention.jsonl.
 #
-# STATUS: SKELETON. No sources declared yet.
+# STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
+#   Two candidate pools are declared below (MetaMathQA, Code-Feedback).
+#   The final 20k training selection + holdout (configs/data/retention.yaml)
+#   is a LATER step and has NOT been run.
 #
 # CRITICAL DISTINCTION
 #   This file describes TRAINING data (replay/rehearsal).
@@ -24,19 +27,19 @@
 #   - Every source must be declared with license and permitted use.
 #
 # TODO
-#   [ ] Choose replay sources covering the capabilities to protect.
-#   [ ] Verify licensing for each source.
-#   [ ] Ensure source-level disjointness from eval.yaml, then verify at record
-#       level with a contamination check.
+#   [ ] Add more replay sources to cover all five capabilities:
+#       mathematics, coding, reasoning, instruction following, knowledge QA.
+#   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
 #   [ ] Decide the replay ratio (NOT decided yet — see `mixture`).
 #   [ ] Document decisions in docs/DATA.md.
 # =============================================================================
 
-version: 0
+version: 1
 name: gemma-tounsi-retention-replay
 description: >-
   General-capability replay/rehearsal data used during training to mitigate
-  catastrophic forgetting. Skeleton only: no sources selected.
+  catastrophic forgetting. Two candidate sources acquired; final selection
+  (20k train + 2.5k holdout) not yet performed.
 
 constraints:
   purpose: training           # replay/rehearsal — NOT evaluation
@@ -49,22 +52,58 @@ constraints:
 # capabilities_to_preserve
 # Which abilities the replay mixture is meant to protect. Each should map to a
 # measurable task in the retention evaluation track.
-# TODO: finalize this list together with eval/retention/.
 # -----------------------------------------------------------------------------
-capabilities_to_preserve: []
-  # TODO: e.g. instruction following, multilingual QA, reasoning, code,
-  #       safety behaviour, long-context handling, formatting compliance.
-  #       Keep aligned 1:1 with the retention benchmark categories.
+capabilities_to_preserve:
+  - mathematics
+  - coding
+  - reasoning
+  - instruction_following
+  - knowledge_qa
 
 # -----------------------------------------------------------------------------
-# sources — same schema as train.yaml.
+# sources — one entry per corpus.
 #
-#   - id / type / location / revision / license / permitted_use / attribution
-#     capability: which preserved capability this source covers
-#     notes:      caveats
+# Schema (all fields required once a source is added):
+#   - id:            short stable identifier, used in logs and reports
+#     type:          hf_dataset | url | local | scraped | synthetic | human
+#     location:      dataset id / URL / path (no credentials inline)
+#     revision:      commit SHA, tag, or snapshot date — MUST be pinned
+#     capability:    preserved capability this source covers
+#     license:       SPDX id or explicit terms
+#     permitted_use: why redistribution/training is allowed
+#     attribution:   required credit, if any
+#     notes:         quality caveats, coverage, known issues
+#
+# STATUS: candidates acquired (data/raw/), NOT yet selected or cleaned.
 # -----------------------------------------------------------------------------
-sources: []
-  # TODO: declare replay sources here.
+sources:
+  - id: metamathqa
+    type: hf_dataset
+    location: meta-math/MetaMathQA
+    revision: aa4f34d3d2d3231299b5b03d9b3e5a20da45aa18
+    capability: mathematics
+    license: MIT
+    permitted_use: MIT license permits use in model training
+    attribution: MetaMathQA (Yu et al., 2023) — https://huggingface.co/datasets/meta-math/MetaMathQA
+    row_count: 395000
+    local_path: data/raw/meta-math__MetaMathQA/MetaMathQA-395K.json
+    notes: >-
+      395K math word problems generated from GSM8K and MATH. Acquired but not
+      yet normalized into the canonical schema; selection is a later step.
+
+  - id: code-feedback
+    type: hf_dataset
+    location: m-a-p/Code-Feedback
+    revision: f411b16a97c910ac9acf8b0d0948e340aa77cc34
+    capability: coding
+    license: Apache-2.0
+    permitted_use: Apache-2.0 license permits use in model training
+    attribution: m-a-p / Code-Feedback — https://huggingface.co/datasets/m-a-p/Code-Feedback
+    row_count: 66383
+    local_path: data/raw/m-a-p__Code-Feedback/Code-Feedback.jsonl
+    notes: >-
+      66K coding instruction-following examples with feedback. Acquired but not
+      yet normalized into the canonical schema; selection is a later step.
 
 preprocessing:
   normalization: null   # TODO
