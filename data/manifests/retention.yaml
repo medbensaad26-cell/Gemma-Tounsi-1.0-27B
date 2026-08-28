@@ -9,7 +9,7 @@
 #   by Tunisian adaptation. Builds data/retention.jsonl.
 #
 # STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
-#   Two candidate pools are declared below (MetaMathQA, Code-Feedback).
+#   Three candidate pools are declared below (MetaMathQA, Code-Feedback, SlimOrca).
 #   The final 20k training selection + holdout (configs/data/retention.yaml)
 #   is a LATER step and has NOT been run.
 #
@@ -38,7 +38,7 @@ version: 1
 name: gemma-tounsi-retention-replay
 description: >-
   General-capability replay/rehearsal data used during training to mitigate
-  catastrophic forgetting. Two candidate sources acquired; final selection
+  catastrophic forgetting. Three candidate sources acquired; final selection
   (20k train + 2.5k holdout) not yet performed.
 
 constraints:
@@ -104,6 +104,24 @@ sources:
     notes: >-
       66K coding instruction-following examples with feedback. Acquired but not
       yet normalized into the canonical schema; selection is a later step.
+
+  - id: slimorca
+    type: hf_dataset
+    location: Open-Orca/SlimOrca
+    revision: ce9ed009ef3292bac33d3520afaf5ec804066120
+    capability: instruction_following
+    license: MIT
+    permitted_use: MIT license permits use in model training
+    attribution: >-
+      SlimOrca (Lian et al., 2023) —
+      https://huggingface.co/datasets/Open-Orca/SlimOrca
+    row_count: 517982
+    local_path: data/raw/Open-Orca__SlimOrca/oo-labeled_correct.gpt4.sharegpt.jsonl
+    notes: >-
+      ~518K English GPT-4 completions with verification pass from the OpenOrca
+      project. Covers general instruction, reasoning, and knowledge QA.
+      Acquired but not yet normalized into the canonical schema; selection is
+      a later step.
 
 preprocessing:
   normalization: null   # TODO
