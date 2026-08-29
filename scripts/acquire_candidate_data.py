@@ -1,14 +1,17 @@
 """Step 1: Acquire candidate data for the retention slice.
 
-Downloads MetaMathQA and Code-Feedback into data/raw/ as original,
-untouched files (immutable once fetched). Records revision data for
-later manifest creation.
+Downloads MetaMathQA, Code-Feedback, and SlimOrca into data/raw/ as
+original, untouched files (immutable once fetched). Records revision
+data for later manifest creation, and marks files read-only on disk
+so they can't be accidentally modified after acquisition.
 
 Datasets:
   - meta-math/MetaMathQA   (377 MB, JSON)
   - m-a-p/Code-Feedback    (394 MB, JSONL)
+  - Open-Orca/SlimOrca     (~986 MB, JSONL)
 """
 import json
+import os, stat
 from pathlib import Path
 
 from huggingface_hub import HfApi, snapshot_download
@@ -21,6 +24,11 @@ DATASETS = [
     "m-a-p/Code-Feedback",
     "Open-Orca/SlimOrca",
 ]
+DATASET_META = {
+    "meta-math/MetaMathQA": {"license": "MIT", "row_count": 395000},
+    "m-a-p/Code-Feedback": {"license": "Apache-2.0", "row_count": 66383},
+    "Open-Orca/SlimOrca": {"license": "MIT", "row_count": 517982},
+}
 
 api = HfApi()
 
@@ -59,8 +67,12 @@ def main() -> None:
                 "*.yml",
             ],
         )
+        for f in dest.rglob("*"):
+            if f.is_file() and f.name != "_provenance.json":
+                os.chmod(f, stat.S_IREAD)
 
         # Small provenance sidecar (the manifest is task 5).
+        meta = DATASET_META.get(repo_id, {})
         prov = dest / "_provenance.json"
         prov.write_text(
             json.dumps(
@@ -68,6 +80,8 @@ def main() -> None:
                     "source": repo_id,
                     "revision": revision,
                     "note": "original download, immutable",
+                    "license": meta.get("license", "unknown"),
+                    "row_count": meta.get("row_count"),
                 },
                 indent=2,
             ),
