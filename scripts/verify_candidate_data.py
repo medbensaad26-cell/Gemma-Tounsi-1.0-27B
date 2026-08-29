@@ -43,6 +43,7 @@ print("\nPreservation check:")
 original_files = [
     ROOT / "data" / "raw" / "meta-math__MetaMathQA" / "MetaMathQA-395K.json",
     ROOT / "data" / "raw" / "m-a-p__Code-Feedback" / "Code-Feedback.jsonl",
+    ROOT / "data" / "raw" / "Open-Orca__SlimOrca" / "oo-labeled_correct.gpt4.sharegpt.jsonl",
 ]
 for f in original_files:
     exists = f.exists()

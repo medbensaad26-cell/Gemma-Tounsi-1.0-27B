@@ -19,6 +19,7 @@ RAW_ROOT.mkdir(parents=True, exist_ok=True)
 DATASETS = [
     "meta-math/MetaMathQA",
     "m-a-p/Code-Feedback",
+    "Open-Orca/SlimOrca",
 ]
 
 api = HfApi()
