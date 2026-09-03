@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/Gemma Tounsi Logo.png" alt="Gemma Tounsi 1.0" width="700">
+  <img src="assets/Gemma Tounsi Logo.png" alt="Gemma Tounsi 1.0" width="300">
 </p>
 
 <h1 align="center">Gemma Tounsi 1.0 — 27B</h1>
