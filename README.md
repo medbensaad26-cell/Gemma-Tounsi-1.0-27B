@@ -345,7 +345,7 @@ If you use Gemma Tounsi 1.0 or this repository, please cite it — see [CITATION
 ```bibtex
 @software{gemma_tounsi_1_0_27b,
   title  = {Gemma Tounsi 1.0 (27B): a Tunisian-adapted Gemma 3 27B model},
-  author = {BENSAAD, Mohamed and NASR, Haithem},
+  author = {Mohamed BENSAAD and Haithem NASR},
   url    = {https://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B},
   note   = {Apache-2.0; training performed with the external Soup engine}
 }
