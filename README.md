@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/Gemma Tounsi Logo.png" alt="Gemma Tounsi 1.0" width="300">
+  <img src="assets/gemma-tounsi-logo.png" alt="Gemma Tounsi 1.0" width="300">
 </p>
 
 <h1 align="center">Gemma Tounsi 1.0 — 27B</h1>
@@ -9,548 +9,600 @@
 </p>
 
 <p align="center">
-  Tunisian Derja · Arabizi · Franco-Tunisian · MSA · Capability Retention
+  <a href="https://github.com/google/gemma_pytorch">
+    <img src="https://img.shields.io/badge/Base%20Model-Gemma%203%2027B-1f6feb?style=flat-square" alt="Base Model">
+  </a>
+  <a href="https://github.com/MakazhanAlpamys/Soup">
+    <img src="https://img.shields.io/badge/Training-QLoRA%20%2B%20SFT-1f6feb?style=flat-square" alt="Training">
+  </a>
+  <img src="https://img.shields.io/badge/Soup-0.73.3-1f6feb?style=flat-square" alt="Soup 0.73.3">
+  <img src="https://img.shields.io/badge/Status-Research%20Build-f59e0b?style=flat-square" alt="Research Build">
+  <img src="https://img.shields.io/badge/License-Apache--2.0-2ea44f?style=flat-square" alt="Apache 2.0">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Model-Gemma%203%2027B-blue" alt="Gemma 3 27B">
-  <img src="https://img.shields.io/badge/Method-QLoRA-blue" alt="QLoRA">
-  <img src="https://img.shields.io/badge/Status-Research%20Build-orange" alt="Research Build">
-  <img src="https://img.shields.io/badge/License-Apache--2.0-green" alt="Apache 2.0">
+  Tunisian Derja · Arabizi · Franco-Tunisian · MSA · Capability Retention
 </p>
-
-Gemma Tounsi 1.0 adapts Gemma 3 27B to Tunisian Arabic — ****Derja in Arabic script, **Arabizi** (Latin-script Tunisian), and Franco-Tunisian code-switching — *without degrading the base model's general instruction-following and reasoning capabilities*. This repository owns the ****data****, ****evaluation****, and ****release**** side of the project: dataset preparation and provenance, mixture definitions, experiment configuration, benchmark definitions, and release orchestration. Training itself is delegated to the open-source ****[Soup](https://github.com/MakazhanAlpamys/Soup)**** engine, consumed as a pinned external dependency — never vendored or reimplemented here.
-
-> ****Project status: research build in progress.**** No model has been trained or released yet. Every claim in this repository is backed by an implemented, tested artifact — and nothing is claimed before it has been measured. See [Project status](#project-status).
 
 ---
 
-**
+## Overview
 
-**## Table of contents**
+**Gemma Tounsi 1.0** adapts `google/gemma-3-27b-it` to Tunisian Arabic across:
 
-1\. [Objective](#objective)
+- **Derja in Arabic script**
+- **Arabizi** — Latin-script Tunisian using the characteristic `3` / `7` / `9` orthography
+- **Franco-Tunisian code-switching**
+- **MSA / formal Arabic register**
 
-2\. [Project status](#project-status)
+The project is designed around a central objective:
 
-3\. [Design principles](#design-principles)
+> **Make Gemma's existing capabilities work naturally in Tunisian.**
 
-4\. [Architecture overview](#architecture-overview)
+A model that speaks fluent Tunisian but loses the ability to perform mathematics, coding, reasoning, instruction following, or knowledge QA has **not** met the project's objective.
 
-5\. [The training mixture](#the-training-mixture)
+This repository owns the **data, evaluation, and release** side of the project: dataset preparation and provenance, mixture definitions, experiment configuration, benchmark definitions, and release orchestration. Training is delegated to the open-source **[Soup](https://github.com/MakazhanAlpamys/Soup)** engine as a pinned external dependency; Soup is not vendored or reimplemented here.
 
-6\. [Data pipeline](#data-pipeline)
+> **Research status:** No model has been trained or released yet. No performance claims are made before reproducible measurement. The repository distinguishes implemented and tested infrastructure from work that is still pending.
 
-7\. [Training environment](#training-environment)
+---
 
-8\. [Evaluation tracks](#evaluation-tracks)
+## Table of Contents
 
-9\. [Quick start](#quick-start)
+- [Objective](#objective)
+- [Project Status](#project-status)
+- [Design Principles](#design-principles)
+- [Architecture](#architecture)
+- [Training Mixture](#training-mixture)
+- [Data Pipeline](#data-pipeline)
+- [Training Environment](#training-environment)
+- [Evaluation](#evaluation)
+- [Quick Start](#quick-start)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Repository Layout](#repository-layout)
+- [Large Files and Secrets](#large-files-and-secrets)
+- [License](#license)
+- [Citation](#citation)
 
-10\. [Testing](#testing)
+---
 
-11\. [Documentation](#documentation)
+## Objective
 
-12\. [Repository layout](#repository-layout)
+Gemma Tounsi 1.0 uses **QLoRA** — 4-bit quantization with LoRA adapters — to adapt Gemma 3 27B so that it can:
 
-13\. [Large files & secrets](#large-files--secrets)
+1. Understand and generate **Tunisian Derja in Arabic script**.
+2. Understand and generate **Tunisian Arabizi**, including `3` / `7` / `9` orthography and heavy code-switching.
+3. Handle **French/Tunisian code-switching** naturally.
+4. Shift appropriately into **MSA / formal Arabic**.
+5. Preserve the base model's general capabilities:
+   - mathematics
+   - coding
+   - reasoning
+   - instruction following
+   - knowledge QA
 
-14\. [License](#license)
+Capability preservation is treated as a **release requirement**, not an afterthought. An English retention/replay slice is therefore a first-class component of the training mixture, while technical examples are deliberately distributed throughout the Tunisian adaptation slices.
 
-15\. [Citation](#citation)
+---
 
-**---**
+## Project Status
 
-**## Objective**
+| Area | Status |
+|---|:---:|
+| Repository architecture | ✅ Complete |
+| Docker + Soup training environment | ✅ Implemented and validated on CPU |
+| GPU validation and training | ⬜ Pending |
+| Data-engineering pipeline | ✅ Implemented and tested end to end on synthetic fixtures |
+| Retention candidate corpora | ✅ Acquired, license-checked, pinned, validated and deduplicated |
+| Tunisian adaptation data | 🟨 Specifications frozen; sourcing, adapters and authored-data collection in progress |
+| Training configuration | 🟨 Smoke-test placeholder; final hyperparameters deliberately undecided |
+| Evaluation harnesses | ⬜ Track structure exists; benchmark definitions pending |
+| Model training and release | ⬜ Not started |
 
-Adapt ****Gemma 3 27B**** (\`google/gemma-3-27b-it\`) to Tunisian Arabic with ****QLoRA**** (4-bit quantization + LoRA
+### Current limitation
 
-adapters), so that the resulting model can:
+The validation host currently has no NVIDIA GPU. Consequently:
 
-\- understand and generate ****Derja**** written in Arabic script,
+- `torch.cuda.is_available()` remains `False`
+- no 27B training run has been performed
+- GPU validation is still pending
 
-\- understand and generate ****Arabizi**** — Latin-script Tunisian with its \`3\`/\`7\`/\`9\` orthography and heavy
+The Docker environment, Soup installation, Python environment, mounts, secret passthrough and QLoRA configuration validation have passed on the available CPU host.
 
-  code-switching,
+> **VRAM planning target:** approximately **≥48 GB VRAM** for the baseline 27B QLoRA configuration. Final requirements will be established during GPU validation rather than treated as a universal hardware requirement.
 
-\- shift register into formal Arabic (MSA) and handle French/Tunisian mixing,
+**No fabricated results.** Scores, benchmark claims and example outputs will only be added after a real, reproducible run. `docs/MODEL_CARD.md` remains a placeholder until release.
 
-\- ****keep**** the base model's general capabilities — mathematics, coding, reasoning, instruction following,
+---
 
-  knowledge QA — which is why an English **retention/replay** slice is a first-class part of the mixture and
+## Design Principles
 
-  retention is a hard ****release gate****, not a footnote.
+These principles are enforced through implementation and tests wherever applicable.
 
-The success criterion is **"make Gemma's existing capabilities work naturally in Tunisian"** — a model that
+### 1. No undeclared data
 
-chats fluently in Derja but cannot do arithmetic in it has not met the objective. That is enforced as a
+A corpus that is not declared in `data/manifests/*.yaml` cannot enter a training file. Licensing is checked before use.
 
-cross-cutting technical quota inside the Tunisian slices (see [The training mixture](#the-training-mixture)).
+### 2. Raw data is immutable
 
-**### Separation of concerns**
+`data/raw/` contains sources exactly as obtained. Cleaning and transformation happen downstream so preprocessing decisions can be revised without re-downloading source data.
 
-\| This repository owns | Soup owns |
+### 3. Evaluation data is never training data
 
-\| --- | --- |
+TounsiBench and the retention benchmark are evaluation-only and are kept disjoint from training inputs at the source level. Detected contamination aborts the pipeline rather than being silently filtered.
 
-\| Dataset preparation, provenance & manifests | Training loop |
+### 4. Holdout is reserved before selection
 
-\| Mixture definitions & validation | QLoRA implementation |
+The retention holdout is reserved before training-set selection and cannot appear in training data. `SplitResult` raises on shared IDs.
 
-\| Experiment configuration (\`soup.yaml\`) | Model loading & quantization |
+### 5. Fail loudly
 
-\| Evaluation harnesses & release gating | Checkpointing |
+The mixture validator rejects constraint violations instead of silently rebalancing the dataset.
 
-\| Documentation | GPU / training infrastructure |
+### 6. Deterministic outputs
 
-**## Project status**
+The same manifests, pinned sources and fixed seeds are intended to produce byte-identical outputs.
 
-\| Area | Status |
+### 7. Delegate generic operations
 
-\| --- | --- |
+Generic dataset operations such as deduplication and dataset validation are delegated to Soup where appropriate. This repository implements Gemma-Tounsi-specific logic.
 
-\| Repository architecture | ✅ complete |
+---
 
-\| Docker + Soup training environment | ✅ implemented & validated on CPU ([docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)) |
+## Architecture
 
-\| GPU validation & training | ⬜ pending — no NVIDIA adapter on the validation host so far (needs ≥ 48 GB VRAM for 27B QLoRA) |
+```text
+┌───────────────────────────────────────────────────────────────────────┐
+│                         GEMMA TOUNSI REPOSITORY                       │
+│                                                                       │
+│  manifests → raw → processed → splits → train.jsonl                 │
+│                                        └→ retention.jsonl             │
+│                                                                       │
+│  eval/  ────────────────────────────────────────────────┐             │
+│  configs/ ──────────────────────────────────────────────┤             │
+│  soup.yaml ─────────────────────────────────────────────┘             │
+└───────────────────────────────────────┬───────────────────────────────┘
+                                        │
+                              pinned Docker image
+                                        │
+                                        ▼
+                         ┌─────────────────────────┐
+                         │       Soup 0.73.3       │
+                         │       QLoRA / SFT        │
+                         │       Docker + GPU       │
+                         └─────────────────────────┘
+```
 
-\| Data-engineering pipeline (\`src/data/\`) | ✅ implemented & tested end to end on synthetic fixtures (\`tests/test_data_pipeline.py\`) |
+### Separation of concerns
 
-\| Retention candidate corpora | ✅ acquired, license-checked, pinned, validated & deduplicated — MetaMathQA, Code-Feedback, SlimOrca |
+| Gemma Tounsi repository | Soup |
+|---|---|
+| Dataset preparation | Training loop |
+| Provenance and manifests | QLoRA implementation |
+| Mixture definitions | Model loading and quantization |
+| Experiment configuration | Checkpointing |
+| Evaluation harnesses | GPU / training infrastructure |
+| Release gating | — |
+| Documentation | — |
 
-\| Tunisian adaptation data (Derja / Arabizi / Franco / MSA) | 🟨 specs frozen; sourcing, adapters & authored-data collection in progress |
+---
 
-\| Training configuration (\`soup.yaml\`) | 🟨 clearly-labelled ****smoke-test placeholder**** — real hyperparameters deliberately undecided until GPU validation |
+## Training Mixture
 
-\| Evaluation harnesses | ⬜ track structure only — no benchmarks defined, no runs performed |
+The authoritative dataset-independent definition lives in [`configs/data/mixture.yaml`](configs/data/mixture.yaml) and is enforced by `src/data/mixture.py`.
 
-\| Model training & release | ⬜ not started — no model exists yet |
+| Slice | Share | Purpose |
+|---|---:|---|
+| `arabizi` | **35%** | Latin-script Tunisian Derja |
+| `arabic_derja` | **25%** | Arabic-script Tunisian Derja |
+| `franco_tunisian` | **12%** | French / Tunisian code-switching |
+| `msa_formal` | **8%** | Formal-register coverage; never counted as retention |
+| `retention` | **20%** | English capability preservation |
 
-****No fabricated results.**** Scores, claims, and example outputs appear in this repository only after a real,
+### Retention vs. MSA
 
-reproducible run produced them. \`docs/MODEL_CARD.md\` is an explicit placeholder until release.
+These slices have deliberately different purposes:
 
-**## Design principles**
+- **`retention`** = English capability preservation through replay/rehearsal data. It primarily protects the base model's general abilities and does not require Tunisian output.
+- **`msa_formal`** = formal/register coverage. It is separate from retention, and non-English records in the retention slice are a hard failure.
 
-These rules are enforced in code and tests, not just documented:
+### Technical quota
 
-1\. ****No undeclared data.**** A corpus that is not declared in a manifest (\`data/manifests/*.yaml\`) never reaches
+At least **20% of both the `arabizi` and `arabic_derja` slices** must be technical examples covering:
 
-   a training file. Licensing is checked **before** use.
+- mathematics
+- reasoning
+- coding
 
-2\. ****Raw data is immutable.**** \`data/raw/\` holds sources exactly as obtained (marked read-only on disk); all
+The quota is checked against the actual processed contents.
 
-   cleaning happens downstream so decisions can be revised without re-downloading.
+### Retention dataset
 
-3\. ****Evaluation data is never training data.**** TounsiBench and the retention **benchmark** are evaluation-only
+The retention configuration specifies **20,000 training examples** with hard category targets:
 
-   and disjoint from training inputs at the source level. Detected contamination ****aborts**** the pipeline —
+| Category | Target |
+|---|---:|
+| Mathematics | 5,000 |
+| Coding | 5,000 |
+| Reasoning | 4,000 |
+| Instruction following | 3,000 |
+| Knowledge QA | 3,000 |
+| **Total** | **20,000** |
 
-   it is never silently filtered away.
+A stratified **2,500-example holdout** is reserved before selection.
 
-4\. ****Holdout is reserved before selection**** and can never appear in a training file (\`SplitResult\` raises on
+Current candidate pools:
 
-   any shared id).
+| Dataset | Capability | Rows | License |
+|---|---|---:|---|
+| [MetaMathQA](https://huggingface.co/datasets/meta-math/MetaMathQA) | Mathematics | 395,000 | MIT |
+| [Code-Feedback](https://huggingface.co/datasets/m-a-p/Code-Feedback) | Coding | 66,383 | Apache-2.0 |
+| [SlimOrca](https://huggingface.co/datasets/Open-Orca/SlimOrca) | Reasoning / instruction / knowledge | 517,982 | MIT |
 
-5\. ****Fail loudly, never auto-rebalance.**** The mixture validator refuses to proceed on any constraint
+All three are pinned to exact revisions in [`data/manifests/retention.yaml`](data/manifests/retention.yaml), stored immutably under `data/raw/`, and validated and deduplicated as documented under `docs/data/`.
 
-   violation instead of silently adjusting shares.
+---
 
-6\. ****Deterministic outputs.**** Same manifests + pinned sources + fixed seeds ⇒ byte-identical outputs.
+## Data Pipeline
 
-7\. ****Generic operations are delegated to Soup**** (deduplication, dataset validation); this repository
+The data pipeline has one main entry point:
 
-   implements only the Gemma-Tounsi-specific logic.
+```text
+canonicalization
+      ↓
+validation
+      ↓
+statistics
+      ↓
+deduplication
+  ├─ exact local
+  └─ near-duplicate via Soup
+      ↓
+retention selection
+      ↓
+holdout reservation
+      ↓
+mixture validation
+      ↓
+Soup-compatible JSONL export
+```
 
-**## Architecture overview**
+The pipeline is currently proven end to end against synthetic fixtures deliberately containing:
 
-\`\`\`text
+- duplicate records
+- malformed rows
+- a below-quota slice
 
-                    ┌─────────────────────────────────────────────────────┐
+A pipeline that has never rejected invalid input has not been meaningfully tested.
 
-                    │                THIS REPOSITORY                     │
+### Canonical record
 
-                    │                                                    │
+Internal examples use a canonical JSONL schema containing:
 
-  manifests ──►  raw ──►  processed ──►  splits ──►  train.jsonl          │
+- `id`
+- `messages`
+- `category`
+- `source`
+- `language`
 
-  (provenance)   (immutable)  (src/data/)          retention.jsonl       │
+Optional fields include:
 
-                    │                                    │              │
+- `script`
+- `code_switching`
+- `difficulty`
+- `quality`
+- `variation_group`
 
-                    │  eval/  (3 tracks, eval-only)      ▼              │
+The specification is documented in [`docs/DATA_SCHEMA.md`](docs/DATA_SCHEMA.md), with the machine-readable source of truth in [`configs/data/schema.yaml`](configs/data/schema.yaml).
 
-                    │  configs/  (specs, releases)   soup.yaml           │
+The final export converts canonical records into the ShareGPT-compatible format consumed by Soup 0.73.3.
 
-                    └──────────────────────────┬─────────────────────────┘
+### Run the pipeline
 
-                                               │  pinned image, /workspace mount
-
-                                               ▼
-
-                                    ┌────────────────────┐
-
-                                    │  Soup 0.73.3       │
-
-                                    │  QLoRA / SFT       │
-
-                                    │  (Docker, GPU)     │
-
-                                    └────────────────────┘
-
-\`\`\`
-
-\`\`\`text
-
-gemma-tounsi-1.0/
-
-├── soup.yaml              # training config consumed by Soup (smoke-test placeholder)
-
-├── Dockerfile             # thin layer over the pinned official Soup image
-
-├── docker-compose.yml     # soup (GPU) + soup-cpu (validation) services
-
-├── configs/
-
-│   ├── data/              # machine-readable specs: schema, mixture, retention, msa
-
-│   └── releases/          # frozen configs for released models
-
-├── data/                  # datasets, manifests & provenance  (see data/README.md)
-
-├── src/data/              # data-engineering pipeline (schema → export)
-
-├── eval/                  # three evaluation tracks (definitions, not results)
-
-├── scripts/               # thin orchestration wrappers (no training logic)
-
-├── docs/                  # model card, data, schema, training, evaluation, environment
-
-└── tests/                 # pipeline tests, all runnable offline
-
-\`\`\`
-
-**## The training mixture**
-
-The authoritative, dataset-independent definition lives in [\`configs/data/mixture.yaml\`](configs/data/mixture.yaml)
-
-and is enforced by \`src/data/mixture.py\`:
-
-\| Slice | Share | Purpose |
-
-\| --- | --- | --- |
-
-\| \`arabizi\` | 0.35 | Latin-script Tunisian Derja |
-
-\| \`arabic_derja\` | 0.25 | Arabic-script Tunisian Derja |
-
-\| \`franco_tunisian\` | 0.12 | French / Tunisian code-switching |
-
-\| \`msa_formal\` | 0.08 | ****Formal register coverage**** — **never counted as retention** |
-
-\| \`retention\` | 0.20 | ****English capability preservation**** — **not a Tunisian dataset** |
-
-Two distinctions the validator enforces in code:
-
-\- ****\`retention\` = English capability preservation.**** Replay/rehearsal data protecting the base model's
-
-  general abilities. It is primarily English and requires no Tunisian output.
-
-\- ****\`msa_formal\` = formal/register coverage.**** A separate purpose; non-English records in the retention
-
-  slice are a hard failure.
-
-****Cross-cutting technical quota:**** at least ****20 %**** of both the \`arabizi\` and \`arabic_derja\` slices must be
-
-technical (\`mathematics\` / \`reasoning\` / \`coding\`), checked as \`>=\` against the actual processed contents.
-
-The retention slice itself is specified in [\`configs/data/retention.yaml\`](configs/data/retention.yaml):
-
-20,000 training examples with hard per-category targets (5,000 math, 5,000 coding, 4,000 reasoning,
-
-3,000 instruction following, 3,000 knowledge QA) plus a stratified 2,500-example holdout reserved before
-
-selection. Candidate pools already acquired and validated cover these targets with a large surplus:
-
-\| Candidate pool | Capability | Rows | License |
-
-\| --- | --- | --- | --- |
-
-\| [MetaMathQA](https\://huggingface.co/datasets/meta-math/MetaMathQA) | mathematics | 395,000 | MIT |
-
-\| [Code-Feedback](https\://huggingface.co/datasets/m-a-p/Code-Feedback) | coding | 66,383 | Apache-2.0 |
-
-\| [SlimOrca](https\://huggingface.co/datasets/Open-Orca/SlimOrca) | reasoning / instruction / knowledge | 517,982 | MIT |
-
-All three are pinned to exact revisions in [\`data/manifests/retention.yaml\`](data/manifests/retention.yaml),
-
-stored immutable under \`data/raw/\`, and were inspected and deduplicated with the Soup CLI (analysis in
-
-\`docs/data/\`).
-
-**## Data pipeline**
-
-One entry point, [\`scripts/prepare_data.sh\`](scripts/prepare_data.sh), currently proven end to end against
-
-synthetic fixtures (deliberately containing duplicates, malformed rows and a below-quota slice — a pipeline
-
-that has never rejected anything has not been tested):
-
-\`\`\`text
-
-canonicalization → validation → statistics → deduplication (exact local, near-dup via Soup)
-
-  → retention selection + holdout reservation → mixture validation → Soup-compatible JSONL
-
-\`\`\`
-
-Every internal example is a ****canonical JSONL record**** (\`id\`, \`messages\`, \`category\`, \`source\`, \`language\`,
-
-plus optional \`script\`, \`code_switching\`, \`difficulty\`, \`quality\`, \`variation_group\`). The full specification
-
-is [\`docs/DATA_SCHEMA.md\`](docs/DATA_SCHEMA.md), with the machine-readable source of truth in
-
-[\`configs/data/schema.yaml\`](configs/data/schema.yaml) — the validator reads that file directly, so docs and
-
-enforcement cannot drift apart. The final export converts canonical records to the ****ShareGPT**** format
-
-Soup 0.73.3 consumes.
-
-\`\`\`bash
-
-\# whole pipeline over synthetic fixtures (no downloads, no GPU, no training)
-
+```bash
+# End-to-end synthetic pipeline
 ./scripts/prepare_data.sh
 
-./scripts/prepare_data.sh --in-docker     # same, inside the pinned Soup container
+# Same pipeline inside the pinned Soup container
+./scripts/prepare_data.sh --in-docker
 
-\# individual stages
-
+# Individual stages
 python -m src.data.validate data/synthetic/raw/arabizi.jsonl
+python -m src.data.stats data/synthetic/raw/*.jsonl
+```
 
-python -m src.data.stats    data/synthetic/raw/*.jsonl
+Real corpus adapters and Tunisian authored-data ingestion are the next implementation stage; the pipeline stage order is designed to remain unchanged.
 
-\`\`\`
+---
 
-Real corpus adapters and Tunisian authored-data ingestion are wired in next; the stage order will not change.
+## Training Environment
 
-**## Training environment**
+Soup runs entirely inside Docker with this repository mounted at `/workspace`.
 
-Soup runs ****entirely inside Docker****, with this repository mounted at \`/workspace\`. The host needs only
+The host therefore does not need a local PyTorch, CUDA or `soup-cli` installation for training.
 
-Docker — no local PyTorch, CUDA, or \`soup-cli\` install.
+| Component | Configuration |
+|---|---|
+| Base model | `google/gemma-3-27b-it` |
+| Model access | Gated; requires `HF_TOKEN` |
+| Soup image | `ghcr.io/makazhanalpamys/soup:0.73.3` |
+| Soup version | `0.73.3` |
+| Python | `3.10.12` |
+| PyTorch | `2.13.0+cu130` |
+| Transformers | `4.57.6` |
+| PEFT | `0.20.0` |
+| TRL | `0.28.0` |
+| bitsandbytes | `0.50.1` |
+| Fine-tuning | QLoRA / SFT |
+| Quantization | 4-bit |
+| Layer streaming | **Off**; BETA path evaluated only after baseline |
 
-\| | |
+The Docker Compose setup provides two services:
 
-\| --- | --- |
+- **`soup`** — GPU training service; requires the NVIDIA Container Toolkit.
+- **`soup-cpu`** — GPU-less validation service; not intended for training.
 
-\| Base model | \`google/gemma-3-27b-it\` (gated — requires \`HF_TOKEN\`) |
+`docker compose up` is intentionally inert. Its default command is `soup --help`, so starting the Compose project does not implicitly launch training.
 
-\| Base image | \`ghcr.io/makazhanalpamys/soup:0.73.3\` (official, ****pinned by digest**** — never \`latest\`) |
+### Training configuration
 
-\| Soup version | \`soup v0.73.3\` · schema source of truth: \`src/soup_cli/config/schema.py\` @ \`v0.73.3\` |
+`soup.yaml` is currently a **smoke-test placeholder** validated field-by-field against Soup's schema.
 
-\| Python | \`3.10.12\` (Soup supports 3.10–3.12; 3.13 is ****not**** supported) |
+Final values for:
 
-\| Stack | torch \`2.13.0+cu130\` · transformers \`4.57.6\` · peft \`0.20.0\` · trl \`0.28.0\` · bitsandbytes \`0.50.1\` |
+- LoRA rank / alpha
+- learning rate
+- batch size
+- sequence length
+- epochs
+- mixture ratios
 
-\| Fine-tuning | QLoRA / SFT — \`training.quantization: 4bit\` + \`training.lora\` |
+are deliberately undecided until GPU validation.
 
-\| Layer streaming | ****off**** (BETA; evaluated only after the baseline path works) |
+---
 
-Two compose services share one definition: ****\`soup\`**** reserves all NVIDIA GPUs (the training service,
+## Evaluation
 
-requires the NVIDIA Container Toolkit), and ****\`soup-cpu\`**** is identical without the GPU reservation for
+Evaluation is organized into three independent tracks:
 
-environment validation on GPU-less hosts — not for training.
+| Track | Directory | Question |
+|---|---|---|
+| **TounsiBench** | `eval/tounsibench/` | Does the model handle real Derja in Arabic script? |
+| **Arabizi** | `eval/arabizi/` | Does it handle Latin-script Tunisian and code-switching? |
+| **Retention** | `eval/retention/` | What did adaptation break? |
 
-\`docker compose up\` is intentionally inert (default command is \`soup --help\`): no run ever starts implicitly.
+### Evaluation rules
 
-\> ****Current limitation:**** the validation host has no NVIDIA GPU, so \`torch.cuda.is_available()\` is still
+#### Baselines are mandatory
 
-\> \`False\` and no training has been run. Build, Soup, Python, mounts, secret passthrough and QLoRA config
+Every fine-tuned score is compared against the same measurement on the unmodified Gemma 3 27B base model using pinned revisions and identical decoding settings.
 
-\> validation all pass. Training requires a CUDA host with the NVIDIA Container Toolkit and roughly
+#### Scores are not collapsed into one headline number
 
-\> ****≥ 48 GB VRAM****. Full report: [\`docs/ENVIRONMENT.md\`](docs/ENVIRONMENT.md) and
+Tunisian-language gains and general-capability regressions must remain independently visible.
 
-\> [\`docs/TRAINING.md\`](docs/TRAINING.md) §9.
+#### Retention is a release gate
 
-\`soup.yaml\` is a clearly-labelled ****smoke-test placeholder**** validated field-by-field against Soup's real
+A regression beyond the agreed threshold blocks release through `scripts/release.sh`.
 
-schema. Every hyperparameter (LoRA rank/alpha, learning rate, batch size, sequence length, epochs, mixture
+> Benchmark definitions are currently the next major evaluation milestone. The repository contains the track structure and reporting rules, but no benchmark results exist yet.
 
-ratios) is deliberately ****undecided**** and will be fixed only after the GPU environment is validated.
+See [`eval/README.md`](eval/README.md) and [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
-**## Evaluation tracks**
+---
 
-Evaluation is split into three independent tracks under \`eval/\`, each with its own data, tasks and metrics:
+## Quick Start
 
-\| Track | Directory | Question it answers |
+### 1. Clone
 
-\| --- | --- | --- |
-
-\| ****TounsiBench**** | \`eval/tounsibench/\` | Does it handle real Derja in Arabic script? |
-
-\| ****Arabizi**** | \`eval/arabizi/\` | Does it handle Latin-script Tunisian, incl. code-switching? |
-
-\| ****Retention**** | \`eval/retention/\` | What did adaptation break? |
-
-Rules that make the numbers meaningful:
-
-\- ****Baselines are mandatory.**** Every score is paired with the same measurement on unmodified base
-
-  Gemma 3 27B, at pinned revisions and identical decoding settings.
-
-\- Track scores are ****never aggregated**** into a single headline number — a Tunisian gain that costs general
-
-  capability must stay visible.
-
-\- Retention is a ****release gate****: a regression beyond the agreed threshold blocks the release
-
-  (\`scripts/release.sh\`).
-
-Track structure is in place; benchmark definitions are the next major work item. See
-
-[\`eval/README.md\`](eval/README.md) and [\`docs/EVALUATION.md\`](docs/EVALUATION.md).
-
-**## Quick start**
-
-\`\`\`bash
-
-git clone https\://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B.git
-
+```bash
+git clone https://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B.git
 cd Gemma-Tounsi-1.0-27B
+```
 
-\# 1. secrets (gated Gemma 3 access) — .env is gitignored, never committed
+### 2. Configure gated model access
 
-cp .env.example .env          # then paste your HF_TOKEN
+```bash
+cp .env.example .env
+```
 
-\# 2. environment
+Add your Hugging Face token to `.env`.
 
-docker compose build          # builds gemma-tounsi-soup:0.73.3
+> `.env` is gitignored and must never be committed.
 
-docker compose run --rm soup soup version      # -> soup v0.73.3
+### 3. Validate the environment
 
-docker compose run --rm soup soup doctor       # -> All checks passed
+```bash
+docker compose build
 
-./scripts/doctor.sh           # full validation (SERVICE=soup-cpu on GPU-less hosts)
+docker compose run --rm soup soup version
+docker compose run --rm soup soup doctor
 
-\# 3. data pipeline (offline, deterministic, synthetic fixtures)
+./scripts/doctor.sh
+```
 
-python -m pytest tests/ -v    # schema, quotas, contamination, export, reproducibility
+On a GPU-less host, use the CPU validation service as documented in `docs/ENVIRONMENT.md`.
 
-./scripts/prepare_data.sh     # end-to-end synthetic run
+### 4. Run tests
 
-\# 4. smoke-test training run (needs a GPU host + prepared data/train.jsonl)
-
-./scripts/train.sh
-
-\`\`\`
-
-Local development of the data pipeline needs only Python 3.10+ with \`pytest\` and \`pyyaml\`; the training
-
-stack itself never touches the host.
-
-Outputs written under \`/workspace\` appear directly on the host (e.g. \`output/smoke-test/\`) and are
-
-gitignored.
-
-**## Testing**
-
-\`\`\`bash
-
+```bash
 python -m pytest tests/ -v
+```
 
-\`\`\`
+### 5. Run the synthetic data pipeline
 
-\`tests/test_data_pipeline.py\` runs ****entirely offline**** — no external dataset, no network, no GPU, no
+```bash
+./scripts/prepare_data.sh
+```
 
-training — and asserts real behavioural guarantees: required fields and message ordering, duplicate-id
+### 6. Train
 
-handling, exact retention category targets, determinism, holdout/train disjointness, all eight mixture
+Training requires a validated CUDA host and prepared training data:
 
-constraints (including the 20 % technical quota at the exact boundary), ShareGPT export correctness, and
+```bash
+./scripts/train.sh
+```
 
-end-to-end pipeline reproducibility. Negative cases are tested too: the malformed fixture **must** be rejected
+Training outputs under `/workspace` appear directly on the host and are gitignored.
 
-and the below-quota mixture **must** fail.
+---
 
-**## Documentation**
+## Testing
 
-\| Document | Contents |
+```bash
+python -m pytest tests/ -v
+```
 
-\| --- | --- |
+The data-pipeline test suite runs entirely offline:
 
-\| [\`docs/MODEL_CARD.md\`](docs/MODEL_CARD.md) | Model card for the released model (placeholder until release) |
+- no external dataset downloads
+- no network
+- no GPU
+- no model training
 
-\| [\`docs/DATA.md\`](docs/DATA.md) | Data sources, provenance, licensing, preprocessing record |
+The tests cover:
 
-\| [\`docs/DATA_SCHEMA.md\`](docs/DATA_SCHEMA.md) | The canonical record schema — full specification |
+- required fields and message ordering
+- duplicate-ID handling
+- exact retention category targets
+- deterministic processing
+- train/holdout disjointness
+- all eight mixture constraints
+- the 20% technical quota at the exact boundary
+- ShareGPT export correctness
+- end-to-end reproducibility
 
-\| [\`docs/TRAINING.md\`](docs/TRAINING.md) | Soup setup, configuration, reproduction & validation record |
+Negative cases are tested as well:
 
-\| [\`docs/EVALUATION.md\`](docs/EVALUATION.md) | Evaluation protocol, metrics, reporting rules |
+- malformed fixtures **must** be rejected
+- below-quota mixtures **must** fail
 
-\| [\`docs/ENVIRONMENT.md\`](docs/ENVIRONMENT.md) | Full environment validation report (CPU host) |
+---
 
-\| [\`data/README.md\`](data/README.md) | Data directory layout, provenance & contamination rules |
+## Documentation
 
-\| [\`eval/README.md\`](eval/README.md) | Evaluation track structure and non-negotiable rules |
+| Document | Purpose |
+|---|---|
+| [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md) | Model card; placeholder until release |
+| [`docs/DATA.md`](docs/DATA.md) | Data sources, provenance, licensing and preprocessing |
+| [`docs/DATA_SCHEMA.md`](docs/DATA_SCHEMA.md) | Canonical record schema |
+| [`docs/TRAINING.md`](docs/TRAINING.md) | Soup setup, configuration, reproduction and validation |
+| [`docs/EVALUATION.md`](docs/EVALUATION.md) | Evaluation protocol, metrics and reporting |
+| [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Full environment validation report |
+| [`data/README.md`](data/README.md) | Data layout, provenance and contamination rules |
+| [`eval/README.md`](eval/README.md) | Evaluation tracks and non-negotiable rules |
 
-**## Repository layout**
+---
 
-\| Path | Role |
+## Repository Layout
 
-\| --- | --- |
+```text
+Gemma-Tounsi-1.0-27B/
+│
+├── assets/
+│   └── gemma-tounsi-logo.png
+│
+├── configs/
+│   ├── data/
+│   │   ├── schema.yaml
+│   │   ├── mixture.yaml
+│   │   ├── retention.yaml
+│   │   └── msa.yaml
+│   └── releases/
+│       └── ...
+│
+├── data/
+│   ├── manifests/
+│   ├── raw/
+│   ├── synthetic/
+│   └── ...
+│
+├── docs/
+│   ├── MODEL_CARD.md
+│   ├── DATA.md
+│   ├── DATA_SCHEMA.md
+│   ├── TRAINING.md
+│   ├── EVALUATION.md
+│   └── ENVIRONMENT.md
+│
+├── eval/
+│   ├── tounsibench/
+│   ├── arabizi/
+│   └── retention/
+│
+├── scripts/
+│   ├── doctor.sh
+│   ├── prepare_data.sh
+│   ├── train.sh
+│   ├── evaluate.sh
+│   └── release.sh
+│
+├── src/
+│   └── data/
+│
+├── tests/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── soup.yaml
+├── LICENSE
+├── NOTICE
+├── CITATION.cff
+└── README.md
+```
 
-\| \`src/data/\` | \`schema\` · \`validate\` · \`stats\` · \`dedupe\` (Soup delegation) · \`split\` · \`retention\` · \`mixture\` · \`export\` |
+---
 
-\| \`configs/data/\` | Machine-readable specs: \`schema.yaml\`, \`mixture.yaml\`, \`retention.yaml\`, \`msa.yaml\` |
+## Large Files and Secrets
 
-\| \`data/manifests/\` | Tracked declarations of every permitted corpus (source, revision, license) |
+Datasets, model checkpoints, Hugging Face caches, experiment outputs and generated artifacts are stored outside Git and gitignored.
 
-\| \`data/synthetic/\` | Deterministic fixtures for testing — never training data |
+Tracked repository content is limited to lightweight, reproducible project assets such as:
 
-\| \`scripts/\` | Thin wrappers: \`doctor.sh\`, \`prepare_data.sh\`, \`train.sh\`, \`evaluate.sh\`, \`release.sh\` |
+- manifests
+- configuration
+- benchmark definitions
+- scripts
+- documentation
+- synthetic fixtures required by tests
 
-\| \`configs/releases/\` | Frozen configurations for released models |
+Secrets are never committed or baked into the Docker image.
 
-**## Large files & secrets**
+Use:
 
-Datasets, model checkpoints, Hugging Face caches, experiment outputs and generated artifacts are **stored
+```bash
+cp .env.example .env
+```
 
-outside Git** and gitignored. Only small metadata stays tracked: manifests, configs, benchmark definitions,
+and provide the token locally. Docker Compose injects it at run time through `env_file`.
 
-scripts, documentation, and the synthetic fixtures required by the tests.
+---
 
-Secrets are never committed and never baked into an image. Copy \`.env.example\` to \`.env\` (gitignored and
+## License
 
-docker-ignored) and fill it locally; compose injects it at **run** time via \`env_file\`.
+The source code in this repository is licensed under the **Apache License 2.0**. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-**## License**
+Model weights, datasets and the base Gemma 3 model are governed by their own licenses and terms of use. Gemma 3 is gated and requires acceptance of its applicable license terms.
 
-Source code in this repository is licensed under the ****Apache License 2.0**** — see [LICENSE](LICENSE) and
+---
 
-[NOTICE](NOTICE). Model weights, datasets, and the base Gemma 3 model are governed by their own separate
+## Citation
 
-licenses and terms of use (Gemma 3 is gated; accept its license at
+If you use Gemma Tounsi 1.0 or this repository, please cite the project using [`CITATION.cff`](CITATION.cff):
 
-\<https\://huggingface.co/google/gemma-3-27b-it>).
-
-**## Citation**
-
-If you use Gemma Tounsi 1.0 or this repository, please cite it — see [CITATION.cff](CITATION.cff):
-
-\`\`\`bibtex
-
+```bibtex
 @software{gemma_tounsi_1_0_27b,
+  title  = {Gemma Tounsi 1.0 (27B): a Tunisian-adapted Gemma 3 27B model},
+  author = {Mohamed BENSAAD and Haithem NASR},
+  url    = {https://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B},
+  note   = {Apache-2.0; training performed with the external Soup engine}
+}
+```
 
-  title  = {Gemma Tounsi 1.0 (27B): a Tunisian-adapted Gemma 3 27B model},
+---
 
-  author = {Mohamed BENSAAD and Haithem NASR},
-
-  url    = {https\://github.com/medbensaad26-cell/Gemma-Tounsi-1.0-27B},
-
-  note   = {Apache-2.0; training performed with the external Soup engine}
+<p align="center">
+  <strong>Gemma Tounsi 1.0</strong><br>
+  <sub>Making Gemma's existing capabilities work naturally in Tunisian.</sub>
+</p>
