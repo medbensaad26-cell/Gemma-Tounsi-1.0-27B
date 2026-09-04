@@ -137,7 +137,11 @@ Select math examples until math reaches the **same token total as coding**:
 Carve out the holdout first and make it **token-proportional** across categories (not example-proportional — math now has ~6× more examples than coding). The holdout is never trained on and never packed with training data.
 
 **Step 5 — Reuse this recipe for every other category.**
-Reasoning, instruction-following, and knowledge QA each get a token budget equal to the coding reference, each stratified into sub-budgets, each filled with whole examples only.
+Every remaining category gets its token budget by the **anchoring rule**:
+
+> **T_category = (category's original share ÷ coding's share) × T_code**
+
+Each category keeps its *designed* share of the retention slice — but expressed in tokens. For the SlimOrca categories (reasoning, general instruction, knowledge QA) this yields **0.8 / 0.6 / 0.6 × T_code**, preserving the designed 4:3:3 ratio exactly. Dataset-specific details (tagging, template caps, hygiene checks) are in `docs/data/retention_haithem.md`, Section 2.
 
 ### 3.4 Phase 2 — Pack and pad (one rule)
 
@@ -161,7 +165,7 @@ There are no special cases; a single rule covers everything:
 
 ### 3.6 Implementation notes (what changes in the pipeline)
 
-* `configs/data/retention.yaml` currently expresses per-category targets as example counts (math 5,000 + coding 5,000 within the 20,000 total). Under this strategy, math and coding become **token budgets**; the config and `src/data/retention.py` need a token-aware selection mode.
+* `configs/data/retention.yaml` currently expresses per-category targets as example counts (math 5,000 + coding 5,000 within the 20,000 total). Under this strategy, all five categories become **token-budget multipliers of the code anchor** — `coding: 1.0`, `mathematics: 1.0`, `reasoning: 0.8`, `general_instruction: 0.6`, `knowledge_qa: 0.6` — and the config and `src/data/retention.py` need a token-aware selection mode.
 * `configs/data/mixture.yaml` should blend slices by **token shares**, not example shares — otherwise the imbalance we fix inside retention reappears between slices.
 * Re-run the contamination check against `eval/retention/` on the larger math sample before training.
 
