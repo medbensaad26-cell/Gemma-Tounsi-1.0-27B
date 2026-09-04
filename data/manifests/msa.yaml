@@ -1,0 +1,126 @@
+# =============================================================================
+# data/manifests/msa.yaml
+# MSA (Modern Standard Arabic) candidate sources — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# PURPOSE
+#   Declares the Arabic formal-register candidate pools for the msa_formal
+#   slice (see configs/data/msa.yaml). These sources supply the 8,000 MSA
+#   training examples (plus holdout) when selection is performed.
+#
+# STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
+#   Two candidate pools are declared below (CIDAR, Arabic QA Dataset - SIGIR
+#   2024). Acquired into data/raw/ by scripts/acquire_msa_candidate_data.py.
+#
+# CRITICAL DISTINCTION
+#   This file describes TRAINING data for the msa_formal slice.
+#   It is NOT retention data: retention is English capability preservation
+#   and is declared separately in data/manifests/retention.yaml
+#   (MetaMathQA, Code-Feedback, SlimOrca). MSA is never counted as retention.
+#   The MSA evaluation set lives in data/manifests/eval.yaml and stays disjoint.
+#
+# HARD RULES
+#   - No item in this manifest may overlap any EVAL set.
+#   - Sources must be disjoint from eval sources at the source level where
+#     possible, not merely deduplicated at the record level.
+#   - Every source must be declared with license and permitted use.
+#
+# TODO
+#   [ ] Normalize both pools into the canonical schema (adapters, Task 4B).
+#   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
+#   [ ] Decide the per-source split of the 8,000 MSA targets (see
+#       configs/data/msa.yaml) — do NOT guess weights now.
+#   [ ] Document decisions in docs/DATA.md.
+# =============================================================================
+
+version: 1
+name: gemma-tounsi-msa-candidates
+description: >-
+  Arabic formal-register candidate pools for the msa_formal slice. Two
+  candidate sources acquired (CIDAR, Arabic QA Dataset - SIGIR 2024); final
+  selection (8k train + 1k holdout) not yet performed.
+
+constraints:
+  purpose: training           # msa_formal slice — NOT evaluation, NOT retention
+  contains_evaluation_data: false
+  # Must be verified against data/manifests/eval.yaml before any training run.
+  contamination_check_required: true
+  # MSA is a separate slice from retention and is never counted as retention.
+  is_retention_data: false
+
+# -----------------------------------------------------------------------------
+# sources — one entry per corpus.
+#
+# Schema (all fields required once a source is added):
+#   - id:            short stable identifier, used in logs and reports
+#     type:          hf_dataset | url | local | scraped | synthetic | human
+#     location:      dataset id / URL / path (no credentials inline)
+#     revision:      commit SHA, tag, or snapshot date — MUST be pinned
+#     capability:    slice this source feeds (msa_formal)
+#     license:       SPDX id or explicit terms
+#     permitted_use: why redistribution/training is allowed
+#     attribution:   required credit, if any
+#     notes:         quality caveats, coverage, known issues
+#
+# STATUS: candidates acquired (data/raw/), NOT yet selected or cleaned.
+# -----------------------------------------------------------------------------
+sources:
+  - id: cidar
+    type: hf_dataset
+    location: arbml/CIDAR
+    revision: bc2f9d7a9de34b534b126c32b8cce98e098138df
+    capability: msa_formal
+    license: Apache-2.0
+    permitted_use: Apache-2.0 license permits use in model training
+    attribution: >-
+      CIDAR: Culturally Relevant Instruction Dataset For Arabic (Alasmari et
+      al., 2024) — https://huggingface.co/datasets/arbml/CIDAR
+    row_count: 10000
+    local_path: data/raw/arbml__CIDAR/data/train-00000-of-00001-b2881e1b9f14c3b1.parquet
+    notes: >-
+      10,000 Arabic instruction-output pairs (fields: instruction, output,
+      index). Culturally relevant Arabic instructions; ~9,109 samples
+      translated from Alpagasus plus ~891 Arabic grammar instructions,
+      reviewed by native speakers. Acquired but not yet normalized into the
+      canonical schema; selection is a later step.
+
+  - id: arabic-qa-sigir2024
+    type: hf_dataset
+    location: bobez999/arabic-qa-dataset-sigir2024
+    revision: 66e2b9ff1e37b4f7f081d42d1baf535a3218931c
+    capability: msa_formal
+    license: MIT
+    permitted_use: MIT license permits use in model training
+    attribution: >-
+      Arabic QA Dataset — SIGIR 2024 —
+      https://huggingface.co/datasets/bobez999/arabic-qa-dataset-sigir2024
+    row_count: 10000
+    local_path: data/raw/bobez999__arabic-qa-dataset-sigir2024/data/arabic_qa_10k_sample.jsonl
+    notes: >-
+      10,000 Arabic question-answering pairs for instruction tuning (fields:
+      instruction, input, output, source, language). Native Arabic content
+      with recorded per-record provenance. Acquired but not yet normalized
+      into the canonical schema; selection is a later step.
+
+preprocessing:
+  normalization: null   # TODO
+  cleaning: []          # TODO
+  filters: []           # TODO
+  deduplication: null   # TODO: incl. cross-check against eval sets
+
+# -----------------------------------------------------------------------------
+# mixture — per-source share of the msa_formal slice.
+#
+# DELIBERATELY UNDECIDED. The per-source split of the 8,000 MSA training
+# examples (configs/data/msa.yaml) is an experimental decision and must not
+# be guessed now; mixture weights in configs/data/mixture.yaml are unchanged.
+# -----------------------------------------------------------------------------
+mixture:
+  weights: {}          # TODO: source id -> weight/percentage
+  target_size: null    # TODO: 8,000 MSA training examples (configs/data/msa.yaml)
+  seed: null           # TODO
+
+output:
+  path: data/processed/msa/train.jsonl
+  format: jsonl
+  schema: null         # TODO: match the canonical schema (docs/DATA_SCHEMA.md)

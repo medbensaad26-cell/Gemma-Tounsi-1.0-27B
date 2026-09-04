@@ -15,6 +15,7 @@ data/
 ├── manifests/          # TRACKED — declarative source & mixture definitions
 │   ├── train.yaml      #   Tunisian adaptation training mixture
 │   ├── retention.yaml  #   replay/rehearsal mixture (general capabilities)
+│   ├── msa.yaml        #   MSA formal-register candidate sources (msa_formal slice)
 │   ├── eval.yaml       #   evaluation sets — EVALUATION ONLY, never trained on
 │   └── retention/      #   GENERATED — selection manifests (provenance receipts)
 ├── raw/                # IGNORED — untouched downloads, exactly as obtained
