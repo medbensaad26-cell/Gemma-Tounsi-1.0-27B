@@ -1,7 +1,7 @@
 # MSA Candidate Data Audit: CIDAR + Arabic QA Dataset – SIGIR 2024
 
-**Author:** Gemma Tounsi data team
-**Date:** September 4, 2026
+**Author:** Mohamed
+**Date:** September 5, 2026
 **Status:** Complete (both candidates inspected, validated and deduplicated)
 **Scope:** `msa_formal` slice candidate pools only — the English retention pools (MetaMathQA, Code-Feedback, SlimOrca) were NOT touched, re-downloaded, or re-analyzed.
 
