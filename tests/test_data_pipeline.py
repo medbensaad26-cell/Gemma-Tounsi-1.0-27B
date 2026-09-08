@@ -441,14 +441,9 @@ class TestMSASpecification:
         self, msa_raw: Dict[str, Any]
     ) -> None:
         assert msa_raw["target_examples"] == 8000
-        assert msa_raw["categories"] == {
-            "knowledge_qa": 3000,
-            "instruction_following": 2500,
-            "mathematics": 1000,
-            "reasoning": 1000,
-            "coding": 500,
-        }
-        assert sum(msa_raw["categories"].values()) == 8000
+        # The MSA slice defines NO per-category targets: it is one
+        # formal-register pool selected to the 8,000-example target.
+        assert msa_raw["categories"] is None
         assert msa_raw["holdout"]["target_examples"] == 1000
 
     def test_msa_is_formal_register_not_retention(
@@ -488,14 +483,10 @@ class TestMSASpecification:
     def test_config_targets_map_to_canonical_categories(
         self, msa_raw: Dict[str, Any]
     ) -> None:
-        aliases = msa_raw.get("category_aliases") or {}
-        resolved = {
-            aliases.get(name, name): count
-            for name, count in msa_raw["categories"].items()
-        }
-        assert resolved["general_instruction"] == 2500
-        assert "instruction_following" not in resolved
-        assert sum(resolved.values()) == 8000
+        # With categories: null there is nothing to map to canonical
+        # category names — and no alias block is needed.
+        assert msa_raw["categories"] is None
+        assert not msa_raw.get("category_aliases")
 
     def test_selection_is_deterministic_and_fails_loud(
         self, msa_raw: Dict[str, Any]

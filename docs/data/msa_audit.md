@@ -16,7 +16,7 @@ Both candidate pools were audited for the 8% `msa_formal` slice using the Soup 0
 - **CIDAR is the primary MSA candidate.** It is 97%+ MSA, structurally clean (0 malformed, 35 near-duplicates), culturally relevant, and instruction-diverse. Its ~9965 unique rows comfortably cover the 8,000-example MSA target **on their own**.
 - **Arabic QA Dataset – SIGIR 2024 is a usable but structurally weaker supplement.** It is 99.9% MSA and clean (1 malformed row), but **21.3% of its rows are near-duplicates** — 10,000 questions are built on only **1,500 unique passages**, and the pool is heavily knowledge-QA weighted with very short answers (median 33 chars). Its usable unique content is roughly **1,500 passages / ~7,872 deduplicated rows**.
 - **The critical MSA-vs-dialect assumption held**: neither dataset is a dialect dataset. Tunisian Derja markers are essentially absent (0 unambiguous hits in both pools after false-positive correction). Latin/code-switched content is a CIDAR-only artifact (217 rows, mostly code answers — expected and acceptable for the technical quota).
-- **Recommendation:** source the MSA slice primarily from CIDAR; use Arabic QA (deduplicated, passage-aware) as a knowledge-QA/topical diversity supplement; cap its share so passage repetition does not skew the slice.
+- **Recommendation:** source the MSA slice primarily from CIDAR; use Arabic QA (deduplicated, passage-aware) as a topical-diversity supplement; cap its share so passage repetition does not skew the slice.
 
 ---
 
@@ -92,9 +92,8 @@ Instruction-only classification (passages excluded to avoid contamination of the
 
 Findings:
 
-- The two pools are **complementary**: CIDAR is instruction/creative-heavy; Arabic QA is knowledge-QA-heavy (66.9%). This matches the MSA slice's designed category profile (`configs/data/msa.yaml`: knowledge_qa 3,000; instruction_following 2,500; mathematics 1,000; reasoning 1,000; coding 500).
-- Neither pool alone fills the MSA mathematics (1,000) target: CIDAR ~398 + QA ~191 ≈ **589 genuine math examples**. **A dedicated Arabic-math source (or synthetic/authored math in MSA) is still needed** for the MSA technical quota.
-- Arabic QA's "mathematics" questions are mostly **counting questions about facts** ("How many provinces does Estonia have?") — they are knowledge QA, not mathematics. Do not count them toward the math target.
+- The two pools are **complementary**: CIDAR is instruction/creative-heavy; Arabic QA is knowledge-QA-heavy (66.9%). The MSA slice defines no per-category quotas (`configs/data/msa.yaml`: `categories: null`), so this mix simply shapes the slice's natural flavour.
+- Arabic QA's "mathematics" questions are mostly **counting questions about facts** ("How many provinces does Estonia have?") — they are knowledge QA in substance, not mathematics. Noted for accuracy of the descriptive `category` tags only.
 
 ## 4. Duplicates
 
@@ -138,7 +137,7 @@ Both pools are therefore **single-source**. Neither provides fine-grained per-ro
 
 ## 7. Suitability for the 8% MSA Slice
 
-The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout) with category targets knowledge_qa 3,000 / instruction_following 2,500 / mathematics 1,000 / reasoning 1,000 / coding 500 (`configs/data/msa.yaml`).
+The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout). The slice defines **no per-category targets** — it is one formal-register pool (`configs/data/msa.yaml`: `categories: null`).
 
 | Criterion | CIDAR | Arabic QA – SIGIR 2024 |
 |---|---|---|
@@ -158,15 +157,14 @@ The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout) wi
 
 ### Verdict and recommended split
 
-1. **Primary source: CIDAR** — take the bulk of the MSA slice from its ~9,700 unique MSA rows (instruction, knowledge, reasoning, creative/general categories).
-2. **Supplement: Arabic QA (deduplicated, passage-capped)** — use it to top up `knowledge_qa` toward its 3,000 target, with a **cap of ≤ 2 questions per passage** (diversity rule, analogous to the retention strategy's template caps). At 2 questions/passage this yields ~3,000 rows from ~1,500 passages — enough to fill the knowledge_qa category without passage monoculture.
-3. **Mathematics gap:** neither pool fills the 1,000-example MSA math target (combined ≈ 589). Acquire a dedicated Arabic-math corpus, or author/synthesize MSA math examples, before finalizing the slice.
-4. **Drop before selection:** the 1 empty-output QA row; treat the 409 ultra-short answers as low-value for register learning (keep only if needed to hit knowledge_qa quotas).
+1. **Primary source: CIDAR** — take the bulk of the MSA slice from its ~9,700 unique MSA rows.
+2. **Supplement: Arabic QA (deduplicated, passage-capped)** — use it to add topical diversity, with a **cap of ≤ 2 questions per passage** (diversity rule, analogous to the retention strategy's template caps). At 2 questions/passage this yields ~3,000 rows from ~1,500 passages.
+3. **Drop before selection:** the 1 empty-output QA row; treat the 409 ultra-short answers as low-value for register learning.
 
 ### Selection rules carried forward (mirroring the retention strategy)
 
 - Dedup with Soup MinHash 0.85 first (done — artifacts in `data/processed/msa/*_deduped.jsonl`).
-- Reserve the 1,000-example stratified holdout **before** selection.
+- Reserve the 1,000-example holdout **before** selection (plain deterministic split — no category stratification, matching `configs/data/msa.yaml`).
 - Deterministic selection: fixed order, stable sort by id, seed 42.
 - Record in the selection manifest: per-source counts, passage-cap counts, category counts, dedup thresholds.
 - No mixture-weight decisions are made in this audit; per-source weights remain deliberately undecided in `data/manifests/msa.yaml`.
@@ -197,6 +195,5 @@ Next steps:
 
 1. Write the CIDAR and Arabic QA adapters (normalize to canonical schema, per `docs/DATA_SCHEMA.md`), dropping the empty-output row and keeping the passage in `messages` for QA rows.
 2. Apply passage-aware selection for the QA pool (≤ 2 questions/passage).
-3. Close the MSA mathematics gap (dedicated source or authored content).
-4. Reserve the stratified 1,000-example holdout before any selection.
-5. Record the final per-source mixture weights and selection manifest, then update `docs/DATA.md`.
+3. Reserve the 1,000-example holdout before any selection.
+4. Record the final per-source mixture weights and selection manifest, then update `docs/DATA.md`.

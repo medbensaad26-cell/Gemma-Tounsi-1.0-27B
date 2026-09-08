@@ -51,29 +51,14 @@ schema:
 # Final number of MSA TRAINING examples.
 target_examples: 8000
 
-# --- Per-category targets ----------------------------------------------------
-# Sums to exactly target_examples (3000+2500+1000+1000+500 = 8000).
-# The selector enforces these as HARD targets: it never falls back to
-# unconstrained random sampling.
-#
-# MSA is primarily a formal-register / knowledge slice:
-#   - knowledge_qa is the largest block (formal knowledge, science, society,
-#     history, general culture written in formal Arabic);
-#   - general_instruction keeps the model able to follow instructions in MSA;
-#   - mathematics / reasoning / coding provide technical capability in formal
-#     Arabic (most Arabic technical/educational content is written in MSA).
-categories:
-  knowledge_qa: 3000
-  instruction_following: 2500
-  mathematics: 1000
-  reasoning: 1000
-  coding: 500
-
-# Maps the target keys above onto the canonical `category` enum in
-# configs/data/schema.yaml. Only `instruction_following` needs a mapping:
-# the canonical category name is `general_instruction`.
-category_aliases:
-  instruction_following: general_instruction
+# --- Categories --------------------------------------------------------------
+# The MSA slice defines NO per-category targets. It is one formal-register
+# pool: the selector fills the 8,000-example target with the best available
+# MSA examples (deduplicated, quality-gated, source-diversified) and does NOT
+# enforce any category quotas. Records still carry the canonical `category`
+# field required by configs/data/schema.yaml, but it is descriptive metadata
+# only — never a selection constraint.
+categories: null
 
 # --- Language ----------------------------------------------------------------
 language:
@@ -105,9 +90,9 @@ quality:
 # Reserved BEFORE training selection and never included in training.
 holdout:
   target_examples: 1000
-  # Holdout is carved out per category in the same proportions as `categories`,
-  # so the holdout is representative rather than skewed to one capability.
-  stratified: true
+  # Plain deterministic holdout: the MSA slice defines no per-category quotas,
+  # so there is nothing to stratify by.
+  stratified: false
   # Emitted to data/processed/msa/holdout.jsonl
   output: data/processed/msa/holdout.jsonl
 
@@ -121,9 +106,9 @@ output:
 selection:
   # Deterministic: same candidates + same seed => byte-identical output.
   seed: 42
-  # Stratify by category (hard targets above), then diversify by source.
-  stratify_by: category
-  # Source diversity: no single `source` may exceed this share of a category.
+  # No category stratification (see `categories: null` above); diversify by
+  # source instead.
+  # Source diversity: no single `source` may exceed this share of the slice.
   # 1.0 disables the cap; it is intentionally loose here because the real
   # candidate pools are not known yet. Tighten once real data is inspected.
   max_share_per_source: 1.0
@@ -131,8 +116,8 @@ selection:
   exclude_flagged: true
   # Deduplicate by id before selecting (see src/data/dedupe.py).
   require_unique_ids: true
-  # If a category cannot be filled, FAIL LOUDLY rather than under-filling or
-  # borrowing from another category.
+  # If the 8,000-example target cannot be filled, FAIL LOUDLY rather than
+  # silently under-filling the slice.
   on_insufficient_candidates: error
 
 # --- Rules (documented, asserted by tests) -----------------------------------
