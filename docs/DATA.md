@@ -1,7 +1,8 @@
 # Data — sources, provenance & preparation
 
-> **STATUS: PLACEHOLDER.** No datasets have been selected, licensed, downloaded, or processed.
-> This document defines *what must be recorded* before any data is used.
+> **STATUS:** Retention candidate sources have been acquired and audited. Final production
+> selection is pending; the pipeline is tested on synthetic fixtures. Other inventory sections
+> remain placeholders.
 
 This is the authoritative, human-readable record of every dataset in the project. The machine-
 readable counterpart lives in `data/manifests/`; the two must always agree.
@@ -42,8 +43,31 @@ readable counterpart lives in `data/manifests/`; the two must always agree.
 
 ### 2.2 Replay / rehearsal data (`data/manifests/retention.yaml`)
 
-*TODO — general-capability data replayed during training. This is TRAINING data; it must be
-disjoint from the retention evaluation set.*
+This is **training** data, disjoint from retention evaluation. Pinned revisions, licenses and
+local paths are recorded in `data/manifests/retention.yaml`:
+- **MetaMathQA:** mathematics, 395,000 candidate rows, MIT.
+- **Code-Feedback:** coding, 66,383 candidate rows, Apache-2.0.
+- **SlimOrca:** reasoning, general instruction and knowledge QA, 517,982 candidate rows, MIT.
+
+Production follows `docs/data/retention_mohamed.md` §3 and `docs/data/retention_haithem.md` §2,
+configured in `configs/data/retention.yaml`:
+1. Deduplicate and tag candidates, then reserve a token-proportional holdout first
+   (25/25/20/15/15 across coding/math/reasoning/instruction/knowledge; absolute size still to set).
+2. Select 5,000 diverse coding conversations and measure `T_code` using Gemma's tokenizer
+   with the chat template. Prefer assistant tokens; total tokens are an acceptable fallback
+   used consistently across all categories. Record both.
+3. Fill coding/math/reasoning/instruction/knowledge budgets at **1.0/1.0/0.8/0.6/0.6 × T_code**
+   within ±2%, with whole examples and source-specific diversity quotas. There is no fixed
+   20k-example production target.
+4. Apply math type/seed caps and SlimOrca template caps/tagging audits. Keep Latin-script
+   translation exercises with English instructions; document the decision. Near-deduplicate
+   at 0.85 and cross-check SlimOrca reasoning against math and all selections against evaluation.
+5. Drop examples above 15,500 formatted Gemma tokens; pack biggest-first into 16,384-token
+   sequences with isolated attention and reset position IDs, verified for Gemma 3 hybrid
+   attention. Never pack holdout with training. Record packing efficiency and padding waste.
+
+Retention is **20% of training tokens** (`configs/data/mixture.yaml`). Token-aware selection,
+blending and packing are not yet implemented; legacy count fields support synthetic tests only.
 
 ### 2.3 Evaluation data (`data/manifests/eval.yaml`)
 
@@ -55,7 +79,8 @@ disjoint from the retention evaluation set.*
 manifests/*.yaml  ──►  data/raw/  ──►  data/processed/  ──►  data/splits/  ──►  *.jsonl
 ```
 
-Executed by `scripts/prepare_data.sh` (not yet implemented).
+Executed by `scripts/prepare_data.sh` for synthetic fixtures; production corpus adapters and
+token-aware selection/packing remain pending.
 
 *TODO: document each stage as it is implemented.*
 

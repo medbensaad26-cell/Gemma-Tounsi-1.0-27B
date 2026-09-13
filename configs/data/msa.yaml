@@ -14,7 +14,33 @@
 #   (see configs/data/mixture.yaml — msa_formal is 0.08 of the cocktail).
 #
 # SIZE
-#   Final MSA TRAINING examples: 8,000 (0.08 of the training cocktail).
+#   Working target: 8,000 MSA TRAINING examples (0.08 of the training
+#   cocktail). Under the token-budget selection strategy (SELECTION STRATEGY
+#   below), the 0.08 share is denominated in TOKENS: `target_examples` is the
+#   working example-count ceiling, not the selection unit.
+#
+# SELECTION STRATEGY (token budgets — mirrors docs/data/retention_mohamed.md
+# Section 3 and docs/data/retention_haithem.md Section 2, applied to the
+# msa_formal slice; dataset-specific findings in docs/data/msa_audit.md):
+#   - Tokens are the currency. Equal example counts do NOT mean equal
+#     learning; the 8% msa_formal share of the training cocktail is a TOKEN
+#     share, and selection stops when the token budget is reached (±2% band).
+#   - Whole examples only. An example fits whole or is dropped whole; any
+#     formatted example over ~15,500 Gemma tokens (16,384-token context
+#     window minus chat-template overhead) is dropped, NEVER truncated.
+#   - Tokenize with Gemma's own tokenizer on the FORMATTED example (chat
+#     template included); record total AND assistant tokens in the manifest.
+#   - Stratify inside the budget before counting tokens: source mix, plus a
+#     cap on questions per unique passage for passage-based pools (the MSA
+#     analogue of the retention strategy's per-template caps).
+#   - Holdout reserved FIRST, token-proportional across sources (the slice
+#     defines no categories), never trained on, never packed with training
+#     data.
+#   - Deterministic: fixed order, stable sort by id, seed 42 — reruns must
+#     be byte-identical.
+#   - Packing (training side): biggest-first into 16k sequences with
+#     block-diagonal attention masks (verified for Gemma 3 hybrid
+#     attention); pad only the final partial sequence of the slice.
 #
 # DATASET-INDEPENDENT BY DESIGN
 #   No external dataset is named here. Candidate pools are supplied at run time
@@ -26,7 +52,7 @@
 #   mixture validation (configs/data/mixture.yaml)
 # =============================================================================
 
-spec_version: "1.0"
+spec_version: "1.1"
 slice: msa_formal
 
 # --- Purpose (machine-readable, so tests can assert it) ----------------------
@@ -48,8 +74,50 @@ schema:
     non_empty_content: true
 
 # --- Size --------------------------------------------------------------------
-# Final number of MSA TRAINING examples.
+# Working example-count target for the slice. Under token-budget selection
+# (see `token_budget` below) this is a reference ceiling: the slice is filled
+# to its TOKEN share of the mixture with whole examples.
 target_examples: 8000
+
+# --- Token-budget selection (mirrors the retention strategy) ------------------
+# Machine-readable form of the strategy in docs/data/retention_mohamed.md
+# (Section 3) and docs/data/retention_haithem.md (Section 2), applied to the
+# msa_formal slice. Budgets, shares and the holdout are measured in TOKENS,
+# because tokens — not example counts — are what the model learns from.
+token_budget:
+  # The mixture share (msa_formal: 0.08 in configs/data/mixture.yaml) is a
+  # TOKEN share of the final training cocktail; the slice is filled with
+  # whole examples until its token budget is reached.
+  unit: tokens
+  # Fill each budget with whole examples and stop inside a ±2% tolerance
+  # band: stop before overshooting, or swap in a smaller example.
+  tolerance: 0.02
+  # Training context window: 16,384 tokens (~15,500 usable per example after
+  # chat-template overhead).
+  context_window_tokens: 16384
+  # Hard safety net: drop WHOLE any formatted example longer than this —
+  # never truncate (cut examples are semantically broken).
+  max_formatted_tokens_per_example: 15500
+  # Tokenize with Gemma's own tokenizer on the FORMATTED example (chat
+  # template included); generic counters underestimate Arabic.
+  tokenizer: gemma
+  # Record both totals in the selection manifest: total tokens (everything
+  # the model reads) and assistant tokens (the loss signal).
+  count: [total_tokens, assistant_tokens]
+  # Diversity cap applied BEFORE token counting (stratify inside the budget):
+  # at most this many questions per unique passage for passage-based pools,
+  # with the passage id recorded in `variation_group`. This is the MSA
+  # equivalent of the retention strategy's per-template caps.
+  max_examples_per_variation_group: 2
+  # Packing is a training-side concern, documented here so the whole recipe
+  # lives in one file: biggest-first (first-fit decreasing) into 16k
+  # sequences, block-diagonal attention masks, padding only on the final
+  # partial sequence of the slice.
+  packing:
+    strategy: first_fit_decreasing
+    sequence_length_tokens: 16384
+    attention_mask: block_diagonal
+    pad_only_final_partial_sequence: true
 
 # --- Categories --------------------------------------------------------------
 # The MSA slice defines NO per-category targets. It is one formal-register
@@ -91,7 +159,10 @@ quality:
 holdout:
   target_examples: 1000
   # Plain deterministic holdout: the MSA slice defines no per-category quotas,
-  # so there is nothing to stratify by.
+  # so there is nothing to stratify by. Under the token-budget strategy the
+  # holdout is TOKEN-proportional across sources — the category-free analogue
+  # of the retention strategy's token-proportional holdout — and is never
+  # packed with training data.
   stratified: false
   # Emitted to data/processed/msa/holdout.jsonl
   output: data/processed/msa/holdout.jsonl
@@ -116,9 +187,13 @@ selection:
   exclude_flagged: true
   # Deduplicate by id before selecting (see src/data/dedupe.py).
   require_unique_ids: true
-  # If the 8,000-example target cannot be filled, FAIL LOUDLY rather than
-  # silently under-filling the slice.
+  # If the target cannot be filled, FAIL LOUDLY rather than silently
+  # under-filling the slice.
   on_insufficient_candidates: error
+  # Token-budget mode (see `token_budget` above): fill the slice to its token
+  # share of the training cocktail with WHOLE examples; `target_examples`
+  # stays the example-count ceiling.
+  mode: token_budget
 
 # --- Rules (documented, asserted by tests) -----------------------------------
 rules:
@@ -131,3 +206,8 @@ rules:
   - "Holdout is reserved first and is never part of the training file."
   - "Selection is deterministic and reproducible from this file + the seed."
   - "No external dataset is named in this file; adapters normalize into the canonical schema."
+  - "Tokens are the currency: the 8% msa_formal share of the mixture is a token share; selection stops inside a ±2% tolerance band."
+  - "Whole examples only: any formatted example over ~15,500 Gemma tokens is dropped whole, never truncated."
+  - "Tokenize with Gemma's own tokenizer on the formatted example; record total AND assistant tokens in the selection manifest."
+  - "Stratify by source before counting tokens; cap questions per unique passage (variation_group) — the MSA analogue of the retention template caps."
+  - "Packing: biggest-first into 16k sequences with block-diagonal attention masks (verified for Gemma 3 hybrid attention); pad only the final partial sequence."

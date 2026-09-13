@@ -190,9 +190,9 @@ Generic dataset operations such as deduplication and dataset validation are dele
 
 ## Training Mixture
 
-The authoritative dataset-independent definition lives in [`configs/data/mixture.yaml`](configs/data/mixture.yaml) and is enforced by `src/data/mixture.py`.
+The authoritative definition lives in [`configs/data/mixture.yaml`](configs/data/mixture.yaml). Production shares are measured in **tokens**; `src/data/mixture.py` currently validates example counts for synthetic smoke tests, so token-aware blending remains pending.
 
-| Slice | Share | Purpose |
+| Slice | Token share | Purpose |
 |---|---:|---|
 | `arabizi` | **35%** | Latin-script Tunisian Derja |
 | `arabic_derja` | **25%** | Arabic-script Tunisian Derja |
@@ -205,7 +205,15 @@ The authoritative dataset-independent definition lives in [`configs/data/mixture
 These slices have deliberately different purposes:
 
 - **`retention`** = English capability preservation through replay/rehearsal data. It primarily protects the base model's general abilities and does not require Tunisian output.
-- **`msa_formal`** = formal/register coverage. It is separate from retention, and non-English records in the retention slice are a hard failure.
+- **`msa_formal`** = formal/register coverage, separate from retention. Retention records use English instructions and Latin script; Latin-script translation exercises are kept, with the decision recorded in the selection manifest.
+
+> **Shared selection strategy (token budgets).** Both slices are selected by the same recipe
+> (`docs/data/retention_mohamed.md` §3, `docs/data/retention_haithem.md` §2, applied to MSA in
+> `docs/data/msa_audit.md`): budgets and holdouts are measured in **tokens** (not example counts),
+> whole examples only (anything over ~15,500 formatted Gemma tokens is dropped, never truncated),
+> diversity caps inside each budget (template caps for SlimOrca, ≤ 2 questions per passage for MSA
+> QA pools), token-proportional holdouts reserved first, deterministic selection (seed 42), and
+> biggest-first packing into 16k sequences with block-diagonal attention masks.
 
 ### Technical quota
 
@@ -219,18 +227,27 @@ The quota is checked against the actual processed contents.
 
 ### Retention dataset
 
-The retention configuration specifies **20,000 training examples** with hard category targets:
+Production retention uses **token budgets**, following [Mohamed §3](docs/data/retention_mohamed.md#3-selection--packing-strategy-for-task-8-16k-context-window) and [Haithem §2](docs/data/retention_haithem.md#2-selection--token-budget-strategy-for-task-9-16k-context-window). Reserve the holdout first, then select **5,000 diverse coding conversations** and measure `T_code` with Gemma's tokenizer and chat template. Prefer assistant tokens; total tokens are an acceptable fallback, using one metric consistently and recording both totals.
 
-| Category | Target |
-|---|---:|
-| Mathematics | 5,000 |
-| Coding | 5,000 |
-| Reasoning | 4,000 |
-| Instruction following | 3,000 |
-| Knowledge QA | 3,000 |
-| **Total** | **20,000** |
+| Category | Token budget | Share within retention |
+|---|---:|---:|
+| Coding (anchor) | 1.0 × T_code | 25% |
+| Mathematics | 1.0 × T_code | 25% |
+| Reasoning | 0.8 × T_code | 20% |
+| General instruction | 0.6 × T_code | 15% |
+| Knowledge QA | 0.6 × T_code | 15% |
+| **Total** | **4.0 × T_code** | **100%** |
 
-A stratified **2,500-example holdout** is reserved before selection.
+Fill budgets with whole examples within **±2%**; example counts emerge from measured tokens, not fixed quotas. The holdout follows the same **25/25/20/15/15 token proportions**, is reserved before training selection, and is never packed with training. Its absolute token budget must be set before production.
+
+- **Coding:** diversify language, task type and length bands; preserve multi-turn conversations.
+- **Math:** roughly 60% GSM8K / 40% MATH token sub-budgets, per-type quotas, SV + FOBAR ≤30% combined, and ≤2 variants per seed problem.
+- **SlimOrca:** deterministic tagging (reasoning → knowledge QA → general instruction), audit ~200 examples per category, cap original system-prompt templates at 200 examples, and standardize system prompts before tokenizing.
+- **Hygiene:** near-deduplicate at 0.85 before tagging/budgeting; cross-check SlimOrca reasoning against MetaMathQA and check all selections against retention evaluation data.
+- **Packing:** drop whole examples over 15,500 formatted Gemma tokens; first-fit decreasing into 16,384-token sequences, isolated attention and reset position IDs. Verify masking in both Gemma 3 sliding-window and global layers; pad only final partial sequences as specified in the reports.
+- **Manifest:** record both token totals, counts, anchor/metric, tagging audits, template caps, translation decision, contamination checks, packing efficiency and padding waste.
+
+**Implementation status:** these are production specifications, not a completed selection run. Token-aware selection/packing remains pending; the old 20,000/2,500 count fields are retained only for synthetic pipeline compatibility.
 
 Current candidate pools:
 
@@ -259,9 +276,9 @@ deduplication
   ├─ exact local
   └─ near-duplicate via Soup
       ↓
-retention selection
-      ↓
 holdout reservation
+      ↓
+retention selection
       ↓
 mixture validation
       ↓

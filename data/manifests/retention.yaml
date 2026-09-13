@@ -10,7 +10,7 @@
 #
 # STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
 #   Three candidate pools are declared below (MetaMathQA, Code-Feedback, SlimOrca).
-#   The final 20k training selection + holdout (configs/data/retention.yaml)
+#   The final token-budget training selection + holdout (configs/data/retention.yaml)
 #   is a LATER step and has NOT been run.
 #
 # CRITICAL DISTINCTION
@@ -27,10 +27,10 @@
 #   - Every source must be declared with license and permitted use.
 #
 # TODO
-#   [ ] Add more replay sources to cover all five capabilities:
-#       mathematics, coding, reasoning, instruction following, knowledge QA.
-#   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
-#   [ ] Decide the replay ratio (NOT decided yet — see `mixture`).
+#   [ ] Select the coding anchor, then fill all five category token budgets.
+#   [ ] Verify record-level disjointness from eval.yaml and cross-check
+#       SlimOrca reasoning against MetaMathQA.
+#   [ ] Record measured tokens, tagging audits and packing statistics.
 #   [ ] Document decisions in docs/DATA.md.
 # =============================================================================
 
@@ -39,7 +39,9 @@ name: gemma-tounsi-retention-replay
 description: >-
   General-capability replay/rehearsal data used during training to mitigate
   catastrophic forgetting. Three candidate sources acquired; final selection
-  (20k train + 2.5k holdout) not yet performed.
+  by measured token budgets, with a token-proportional holdout reserved first,
+  not yet performed. See retention_mohamed.md Section 3 and retention_haithem.md
+  Section 2 under docs/data/.
 
 constraints:
   purpose: training           # replay/rehearsal — NOT evaluation
@@ -47,6 +49,10 @@ constraints:
   # Must be verified against data/manifests/eval.yaml before any training run.
   disjoint_from_retention_eval: true
   contamination_check_required: true
+  selection_unit: tokens
+  selection_config: configs/data/retention.yaml
+  whole_examples_only: true
+  max_formatted_tokens_per_example: 15500
 
 # -----------------------------------------------------------------------------
 # capabilities_to_preserve
@@ -90,6 +96,8 @@ sources:
     notes: >-
       395K math word problems generated from GSM8K and MATH. Acquired but not
       yet normalized into the canonical schema; selection is a later step.
+      Fill 1.0 x the measured coding token budget, stratified about 60% GSM8K /
+      40% MATH with per-type quotas and SV + FOBAR capped at 30% combined.
 
   - id: code-feedback
     type: hf_dataset
@@ -102,8 +110,11 @@ sources:
     row_count: 66383
     local_path: data/raw/m-a-p__Code-Feedback/Code-Feedback.jsonl
     notes: >-
-      66K coding instruction-following examples with feedback. Acquired but not
-      yet normalized into the canonical schema; selection is a later step.
+      66K coding instruction-following examples with feedback. Select 5,000
+      diverse examples by language, task and length band after reserving holdout.
+      Preserve multi-turn conversations; measure total and assistant tokens using
+      Gemma's tokenizer with the chat template to establish T_code.
+      Canonical normalization and final selection remain pending.
 
   - id: slimorca
     type: hf_dataset
@@ -121,25 +132,49 @@ sources:
       ~518K English GPT-4 completions with verification pass from the OpenOrca
       project. Covers general instruction, reasoning, and knowledge QA.
       Acquired but not yet normalized into the canonical schema; selection is
-      a later step.
+      a later step. Deterministically tag reasoning, then knowledge QA, otherwise
+      general instruction; audit about 200 examples per category. Fill token
+      budgets of 0.8 / 0.6 / 0.6 x T_code (reasoning / instruction / knowledge).
+      Cap each original system-prompt template at 200 examples; standardize
+      system prompts before tokenizing. Keep Latin-script translation tasks
+      with English instructions and record that decision.
 
+# Planned preprocessing; these declarations do NOT claim a completed run.
 preprocessing:
-  normalization: null   # TODO
-  cleaning: []          # TODO
-  filters: []           # TODO
-  deduplication: null   # TODO: incl. cross-check against eval sets
+  normalization: canonical_schema_then_gemma_chat_template
+  cleaning: [exclude_flagged, reject_empty_fields, preserve_whole_examples]
+  filters: [english_instructions, latin_script, max_15500_formatted_gemma_tokens]
+  deduplication:
+    before_tagging_and_budgeting: true
+    near_duplicate_threshold: 0.85
+    cross_check_slimorca_reasoning_vs_metamathqa: true
+    check_retention_eval: true
 
 # -----------------------------------------------------------------------------
-# mixture — replay ratio relative to the Tunisian training data.
-#
-# DELIBERATELY UNDECIDED. The replay proportion is an experimental variable and
-# must not be guessed now; it will be tuned against the retention benchmark.
+# mixture — 20% of total training tokens (configs/data/mixture.yaml).
+# Full retention budget = 4.0 x T_code; counts emerge from measured tokens.
 # -----------------------------------------------------------------------------
 mixture:
-  weights: {}          # TODO: source id -> weight/percentage
-  replay_ratio: null   # TODO: share of total training tokens/examples
-  seed: null           # TODO
-  target_size: null
+  selection_config: configs/data/retention.yaml
+  unit: tokens
+  token_metric: assistant_tokens
+  fallback_token_metric: total_tokens  # one metric consistently for all budgets
+  replay_ratio: 0.20
+  seed: 42
+  target_size: null  # no fixed example-count target
+  anchor_tokens: null  # measured from 5,000 selected coding examples, never guessed
+  category_multipliers:
+    coding: 1.0
+    mathematics: 1.0
+    reasoning: 0.8
+    general_instruction: 0.6
+    knowledge_qa: 0.6
+  tolerance: 0.02
+
+# Generated receipt must include all metrics required by the selection config:
+# both token totals, counts, tag-rule version/audit, template caps, translation
+# decision, contamination results, packing efficiency and padding waste.
+selection_manifest: data/manifests/retention/selection.json
 
 output:
   path: data/retention.jsonl
