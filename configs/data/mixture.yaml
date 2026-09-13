@@ -15,10 +15,19 @@
 #   scripts/prepare_data.sh
 # =============================================================================
 
-spec_version: "1.0"
+spec_version: "1.1"
+
+# Production shares are measured in TOKENS, not example counts.
+# See docs/data/retention_mohamed.md Section 3.6.
+# The current count-based validator is retained for synthetic smoke tests;
+# token-aware blending/validation must be implemented before production.
+selection_unit: tokens
+token_metric: assistant_tokens
+fallback_token_metric: total_tokens  # use one consistent metric across slices
+token_budget_tolerance: 0.02
 
 # --- The current official training cocktail ----------------------------------
-# Shares are fractions of the FINAL training mixture and must sum to exactly 1.0.
+# Shares are fractions of FINAL training tokens and must sum to exactly 1.0.
 slices:
   arabizi: 0.35          # Latin-script Tunisian Arabic (largest slice)
   arabic_derja: 0.25     # Derja written in Arabic script

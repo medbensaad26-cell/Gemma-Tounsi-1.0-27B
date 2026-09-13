@@ -5,8 +5,8 @@ licensed, how it is normalized, and which mixture is fed to training. It does no
 loop — that belongs to Soup.
 
 > **Status:** the data-engineering pipeline is implemented and proven end to end against
-> **synthetic fixtures only**. No real corpus has been downloaded yet. Dataset-specific
-> adapters arrive in Task 4B.
+> **synthetic fixtures only**. Retention candidate pools have been acquired and audited;
+> canonical adapters and production token-aware selection/packing remain pending.
 
 ## Layout
 
@@ -71,6 +71,8 @@ license, permitted use. No undeclared corpus enters a mixture.
 
 `manifests/retention/` holds **generated** selection manifests — receipts that record, for a given
 run, the seed, the config used, per-category counts, source diversity and the exact ids selected.
+Production receipts also record the measured coding anchor, token metric, total/assistant tokens,
+tagging audits, template caps, translation decision, contamination checks and packing/padding stats.
 Together they answer "where did this training file come from?" without needing the data itself.
 
 ## Rules
@@ -105,6 +107,52 @@ Together they answer "where did this training file come from?" without needing t
 > Modern Standard Arabic teaches register-shifting into formal Arabic. This is a **separate
 > purpose** from retention, and MSA is **never counted as retention**.
 
+> **Shared selection strategy (token budgets).**
+> Both slices select by the same recipe (`docs/data/retention_mohamed.md` §3,
+> `docs/data/retention_haithem.md` §2, applied to MSA in `docs/data/msa_audit.md`):
+> budgets and holdouts are measured in **tokens**, whole examples only (drop — never
+> truncate — anything over ~15,500 formatted Gemma tokens), diversity caps inside the
+> budget (template caps for SlimOrca; ≤ 2 questions per passage for MSA QA pools via
+> `variation_group`), token-proportional holdout reserved first, deterministic selection
+> (seed 42), and biggest-first packing into 16k sequences with block-diagonal attention
+> masks with per-example position resets, verified for Gemma 3's hybrid attention.
+> See `configs/data/retention.yaml`, `configs/data/msa.yaml` and their source manifests.
+
+### Retention token budgets
+
+Reserve a token-proportional holdout first (25/25/20/15/15 across coding, math, reasoning,
+general instruction and knowledge QA; absolute size must be set before production).
+Select **5,000 diverse coding conversations** and measure `T_code` with Gemma's tokenizer
+and chat template. Match assistant tokens preferably, or total tokens consistently across
+all budgets, recording both totals.
+
+| Category | Budget |
+|---|---:|
+| Coding | 1.0 × T_code |
+| Mathematics | 1.0 × T_code |
+| Reasoning | 0.8 × T_code |
+| General instruction | 0.6 × T_code |
+| Knowledge QA | 0.6 × T_code |
+
+Fill each budget within **±2%**, using whole examples. Retention is **20% of training tokens**;
+there is no fixed 20k production example target or 2.5k-example production holdout.
+
+Coding is stratified by language, task and length. Math uses ~60/40 GSM8K/MATH token
+sub-budgets, per-type quotas, SV + FOBAR ≤30%, and ≤2 variants per seed problem.
+SlimOrca is tagged deterministically (reasoning → knowledge QA → general instruction),
+audited on ~200 examples per category and capped at 200 examples per original system-prompt
+template. Standardize system prompts before tokenizing. Keep Latin-script translation tasks
+with English instructions and record the decision.
+
+Near-deduplicate at 0.85 before tagging/budgeting; cross-check SlimOrca reasoning against
+MetaMathQA and check against retention evaluation data again after selection. Never train on
+holdout or pack it with training data. Use first-fit decreasing packing into 16,384-token
+sequences, with final-gap padding as described in the reports.
+
+**Implementation status:** the YAML declares this production strategy. The existing selector
+and mixture validator still use legacy counts for synthetic tests; token-aware execution and
+packing must be implemented before production.
+
 ## Data flow
 
 ```
@@ -114,7 +162,7 @@ external sources ─┘                                    retention.jsonl
 ```
 
 Implemented as: normalize → validate → deduplicate → categorize → quality filter →
-balanced selection → train/holdout split → mixture validation → Soup-compatible JSONL.
+holdout reservation → balanced training selection → mixture validation → Soup-compatible JSONL.
 Generic operations (dedup, filtering, sampling, splitting, format validation) are delegated to
 Soup; this repository implements only the Gemma-Tounsi-specific logic (canonical schema, slice
 definitions, technical quotas, retention selection policy).

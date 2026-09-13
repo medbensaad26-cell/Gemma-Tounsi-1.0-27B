@@ -11,6 +11,29 @@
 # STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
 #   Two candidate pools are declared below (CIDAR, Arabic QA Dataset - SIGIR
 #   2024). Acquired into data/raw/ by scripts/acquire_msa_candidate_data.py.
+#   Audited in docs/data/msa_audit.md (register, formality, duplicates,
+#   passages, task types).
+#
+# SELECTION STRATEGY (token budgets)
+#   Selection follows the SAME strategy as the retention slice
+#   (docs/data/retention_mohamed.md Section 3, docs/data/retention_haithem.md
+#   Section 2, applied to msa_formal):
+#     - Tokens are the currency: the 8% msa_formal share is a TOKEN share;
+#       budgets, shares and the holdout are measured in tokens, not examples.
+#     - Whole examples only; any formatted example over ~15,500 Gemma tokens
+#       (16,384 context window minus chat-template overhead) is dropped whole.
+#     - Tokenize with Gemma's own tokenizer on the FORMATTED example; record
+#       total AND assistant tokens in the selection manifest.
+#     - Stratify inside the budget: primary/secondary source mix, plus a cap
+#       of ≤ 2 questions per unique passage for the passage-based QA pool
+#       (variation_group = passage id) — the MSA analogue of the retention
+#       template caps.
+#     - Holdout reserved FIRST, token-proportional across sources, never
+#       trained on, never packed with training data.
+#     - Deterministic: fixed order, stable sort by id, seed 42 — reruns must
+#       be byte-identical.
+#     - Packing (training side): biggest-first into 16k sequences with
+#       block-diagonal attention masks; pad only the final partial sequence.
 #
 # CRITICAL DISTINCTION
 #   This file describes TRAINING data for the msa_formal slice.
@@ -26,19 +49,27 @@
 #   - Every source must be declared with license and permitted use.
 #
 # TODO
-#   [ ] Normalize both pools into the canonical schema (adapters, Task 4B).
+#   [ ] Normalize both pools into the canonical schema (adapters, Task 4B):
+#       drop the empty-output QA row; keep the passage in `messages` for QA
+#       rows; record passage id in `variation_group`.
 #   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
-#   [ ] Decide the per-source split of the 8,000 MSA targets (see
-#       configs/data/msa.yaml) — do NOT guess weights now.
-#   [ ] Document decisions in docs/DATA.md.
+#   [ ] Tokenize the normalized pools with Gemma's tokenizer (formatted) and
+#       record per-source total/assistant token totals.
+#   [ ] Fill the msa_formal token budget from CIDAR (primary) + Arabic QA
+#       (deduplicated, ≤ 2 questions/passage) — per-source token weights are
+#       an experimental decision; do NOT guess them now (see `mixture`).
+#   [ ] Record the selection manifest (per-source token totals, assistant
+#       tokens, example counts, passage-cap counts, packing efficiency,
+#       padding waste) and document decisions in docs/DATA.md.
 # =============================================================================
 
 version: 1
 name: gemma-tounsi-msa-candidates
 description: >-
   Arabic formal-register candidate pools for the msa_formal slice. Two
-  candidate sources acquired (CIDAR, Arabic QA Dataset - SIGIR 2024); final
-  selection (8k train + 1k holdout) not yet performed.
+  candidate sources acquired (CIDAR, Arabic QA Dataset - SIGIR 2024) and
+  audited; final token-budget selection (8k train + 1k holdout, measured in
+  tokens per configs/data/msa.yaml) not yet performed.
 
 constraints:
   purpose: training           # msa_formal slice — NOT evaluation, NOT retention
@@ -47,6 +78,9 @@ constraints:
   contamination_check_required: true
   # MSA is a separate slice from retention and is never counted as retention.
   is_retention_data: false
+  # Selection is by token budget (configs/data/msa.yaml: token_budget),
+  # mirroring the retention strategy — not by example counts.
+  selection_unit: tokens
 
 # -----------------------------------------------------------------------------
 # sources — one entry per corpus.
@@ -76,13 +110,19 @@ sources:
       CIDAR: Culturally Relevant Instruction Dataset For Arabic (Alasmari et
       al., 2024) — https://huggingface.co/datasets/arbml/CIDAR
     row_count: 10000
+    unique_rows_after_dedup: 9965
     local_path: data/raw/arbml__CIDAR/data/train-00000-of-00001-b2881e1b9f14c3b1.parquet
     notes: >-
       10,000 Arabic instruction-output pairs (fields: instruction, output,
       index). Culturally relevant Arabic instructions; ~9,109 samples
       translated from Alpagasus plus ~891 Arabic grammar instructions,
-      reviewed by native speakers. Acquired but not yet normalized into the
-      canonical schema; selection is a later step.
+      reviewed by native speakers. Audited (docs/data/msa_audit.md): 97.2%
+      MSA, essentially duplicate-free (35 near-duplicates at 0.85), full
+      explanatory outputs (median 247 chars) — the PRIMARY source of the
+      msa_formal token budget. The 217 Latin/code-switched rows are code
+      answers to Arabic instructions (usable; no Arabizi orthography).
+      Acquired but not yet normalized into the canonical schema; selection is
+      a later step.
 
   - id: arabic-qa-sigir2024
     type: hf_dataset
@@ -95,30 +135,46 @@ sources:
       Arabic QA Dataset — SIGIR 2024 —
       https://huggingface.co/datasets/bobez999/arabic-qa-dataset-sigir2024
     row_count: 10000
+    unique_rows_after_dedup: 7872
     local_path: data/raw/bobez999__arabic-qa-dataset-sigir2024/data/arabic_qa_10k_sample.jsonl
     notes: >-
       10,000 Arabic question-answering pairs for instruction tuning (fields:
-      instruction, input, output, source, language). Native Arabic content
-      with recorded per-record provenance. Acquired but not yet normalized
-      into the canonical schema; selection is a later step.
+      instruction, input, output, source, language). Audited
+      (docs/data/msa_audit.md): 99.9% MSA but 21.3% near-duplicates — the
+      pool is passage-based (10,000 questions over ~1,500 unique passages,
+      99.84% of rows share their passage; median answer 33 chars). Use as a
+      topical-diversity SUPPLEMENT with a cap of ≤ 2 questions per passage
+      (variation_group = passage id), analogous to the retention strategy's
+      template caps; drop the 1 empty-output row. Acquired but not yet
+      normalized into the canonical schema; selection is a later step.
 
 preprocessing:
-  normalization: null   # TODO
+  normalization: null   # TODO: adapters (Task 4B) — drop empty-output row,
+                        # keep passage in messages, record passage id in
+                        # variation_group
   cleaning: []          # TODO
-  filters: []           # TODO
-  deduplication: null   # TODO: incl. cross-check against eval sets
+  filters: []           # TODO: drop formatted examples over ~15,500 Gemma
+                        # tokens whole (never truncate)
+  deduplication: >-
+    Soup MinHash 0.85 done (CIDAR: 9,965 unique; Arabic QA: 7,872 unique —
+    artifacts in data/processed/msa/*_deduped.jsonl). Cross-check against
+    eval sets still TODO.
 
 # -----------------------------------------------------------------------------
 # mixture — per-source share of the msa_formal slice.
 #
-# DELIBERATELY UNDECIDED. The per-source split of the 8,000 MSA training
-# examples (configs/data/msa.yaml) is an experimental decision and must not
-# be guessed now; mixture weights in configs/data/mixture.yaml are unchanged.
+# DELIBERATELY UNDECIDED. The per-source split of the msa_formal token
+# budget (configs/data/msa.yaml) is an experimental decision and must not be
+# guessed now; mixture weights in configs/data/mixture.yaml are unchanged.
+# Under the token-budget strategy, when decided, weights are TOKEN shares of
+# the msa_formal budget (CIDAR primary; Arabic QA capped at ≤ 2
+# questions/passage) — not example shares.
 # -----------------------------------------------------------------------------
 mixture:
-  weights: {}          # TODO: source id -> weight/percentage
+  weights: {}          # TODO: source id -> token share of the msa_formal budget
+  unit: tokens         # weights, when decided, are token shares
   target_size: null    # TODO: 8,000 MSA training examples (configs/data/msa.yaml)
-  seed: null           # TODO
+  seed: null           # TODO: 42 at selection time (configs/data/msa.yaml)
 
 output:
   path: data/processed/msa/train.jsonl

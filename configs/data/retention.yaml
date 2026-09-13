@@ -11,7 +11,11 @@
 #   It is NEVER confused with the msa_formal slice, whose purpose is
 #   formal/register coverage of Arabic (see configs/data/mixture.yaml).
 #
-#   Retention is 0.20 of the training cocktail and is primarily ENGLISH.
+#   Retention is 0.20 of the training TOKENS and is primarily ENGLISH.
+#   Production strategy: docs/data/retention_mohamed.md Section 3 and
+#   docs/data/retention_haithem.md Section 2.
+#   Token-aware selection/packing is pending implementation in the pipeline.
+#   Legacy count fields below remain ONLY for existing synthetic smoke tests.
 #
 # DATASET-INDEPENDENT BY DESIGN
 #   No external dataset is named here. Candidate pools are supplied at run time
@@ -23,7 +27,7 @@
 #   scripts/prepare_data.sh
 # =============================================================================
 
-spec_version: "1.1"
+spec_version: "1.2"
 slice: retention
 
 # --- Purpose (machine-readable, so tests can assert it) ----------------------
@@ -44,14 +48,55 @@ schema:
     last_role: assistant
     non_empty_content: true
 
-# --- Size --------------------------------------------------------------------
-# Final number of retention TRAINING examples.
+# --- Production token budgets ------------------------------------------------
+# Reserve holdout first, then select coding and MEASURE its formatted Gemma
+# tokens. Other category budgets use this anchor, never estimated token totals.
+token_budget:
+  unit: tokens
+  metric: assistant_tokens
+  fallback_metric: total_tokens  # only when assistant counting is impractical
+  require_same_metric_for_all_categories: true
+  tokenizer: gemma
+  include_chat_template: true
+  count: [total_tokens, assistant_tokens]
+  anchor:
+    category: coding
+    target_examples: 5000
+  category_multipliers:
+    coding: 1.0
+    mathematics: 1.0
+    reasoning: 0.8
+    general_instruction: 0.6
+    knowledge_qa: 0.6
+  tolerance: 0.02
+  context_window_tokens: 16384
+  max_formatted_tokens_per_example: 15500
+  whole_examples_only: true
+  on_overlength: drop
+  holdout:
+    reserve_first: true
+    unit: tokens
+    target_tokens: null  # set absolute size before production; not fixed in reports
+    category_shares:
+      coding: 0.25
+      mathematics: 0.25
+      reasoning: 0.20
+      general_instruction: 0.15
+      knowledge_qa: 0.15
+    pack_with_training: false
+  packing:
+    strategy: first_fit_decreasing
+    sequence_length_tokens: 16384
+    attention_mask: block_diagonal
+    reset_position_ids_per_example: true
+    verify_gemma3_hybrid_attention: true
+    pad_only_final_partial_sequence: true
+
+# --- Legacy counts: synthetic compatibility ONLY, NOT production targets ------
+# src/data/retention.py still reads these. Production counts must emerge from
+# token_budget; 20k is neither a production target nor a ceiling.
 target_examples: 20000
 
-# --- Per-category targets ----------------------------------------------------
-# Sums to exactly target_examples (5000+5000+4000+3000+3000 = 20000).
-# The selector enforces these as HARD targets: it never falls back to
-# unconstrained random sampling.
 categories:
   mathematics: 5000
   coding: 5000
@@ -70,8 +115,10 @@ language:
   primary: english
   # Canonical `language` values accepted inside this slice.
   allowed: [en]
-  # Retention is a capability guard, so it stays monolingual English by default.
+  # Canonical records remain English. Keep Latin-script translation exercises
+  # with English instructions; record that exception in the selection manifest.
   allow_other_languages: false
+  keep_english_instruction_latin_translation_tasks: true
 
 # --- Quality gate ------------------------------------------------------------
 # Machine-readable quality rules asserted by tests. The selector enforces these
@@ -86,7 +133,8 @@ quality:
   min_messages_turns: 2
   end_with_assistant: true
 
-# --- Holdout -----------------------------------------------------------------
+# --- Legacy holdout: synthetic compatibility ONLY -----------------------------
+# Production uses token_budget.holdout, not a fixed 2,500-example holdout.
 # Reserved BEFORE training selection and never included in training.
 holdout:
   target_examples: 2500
@@ -106,11 +154,11 @@ output:
 selection:
   # Deterministic: same candidates + same seed => byte-identical output.
   seed: 42
-  # Stratify by category (hard targets above), then diversify by source.
+  # Legacy selector uses counts; production stratifies inside token budgets.
   stratify_by: category
+  stable_sort_by: id
   # Source diversity: no single `source` may exceed this share of a category.
-  # 1.0 disables the cap; it is intentionally loose here because the real
-  # candidate pools are not known yet. Tighten once real data is inspected.
+  # 1.0 disables the source cap; production diversity rules are below.
   max_share_per_source: 1.0
   # Records flagged by quality.flagged are never selected.
   exclude_flagged: true
@@ -120,7 +168,58 @@ selection:
   # borrowing from another category.
   on_insufficient_candidates: error
 
-# --- Rules (documented, asserted by tests) -----------------------------------
+# --- Production diversity/hygiene (before budget filling) ---------------------
+diversity:
+  coding:
+    language_shares:
+      python: 0.50
+      javascript_typescript: 0.15
+      java_c_cpp: 0.15
+      go_rust: 0.05
+      other: 0.15
+    task_shares:
+      generation: 0.50
+      debugging_fixing: 0.30
+      refactor_optimize_explain: 0.20
+    length_band_edges_tokens: [1000, 3000, 6000, 10000]
+    preserve_multi_turn: true
+  mathematics:
+    source_family_token_shares: {gsm8k: 0.60, math: 0.40}
+    stratify_by_type: true
+    max_sv_fobar_combined_share: 0.30
+    max_variants_per_seed_problem: 2
+  instruction_pool:
+    tagging_priority: [reasoning, knowledge_qa, general_instruction]
+    deterministic_tagging: true
+    audit_examples_per_category: 200
+    template_key: original_system_prompt_hash
+    max_examples_per_template: 200
+    standardize_system_prompts_before_tokenizing: true
+
+hygiene:
+  near_duplicate_threshold: 0.85
+  deduplicate_before_tagging_and_budgeting: true
+  cross_check_reasoning_against_mathematics: true
+  contamination_check: eval/retention/
+  recheck_after_selection: true
+
+manifest:
+  required_metrics:
+    - anchor_tokens
+    - token_metric
+    - per_category_total_tokens
+    - per_category_assistant_tokens
+    - per_category_example_counts
+    - holdout_token_totals
+    - tag_rule_version
+    - tagging_audit_results
+    - template_cap_counts
+    - translation_task_decision
+    - cross_contamination_check
+    - packing_efficiency
+    - padding_waste
+
+# --- Rules -------------------------------------------------------------------
 rules:
   - "Required schema: every record must satisfy configs/data/schema.yaml (see docs/DATA_SCHEMA.md)."
   - "Quality gate: records flagged by quality.flagged are never selected."
