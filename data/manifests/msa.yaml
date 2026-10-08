@@ -8,11 +8,24 @@
 #   slice (see configs/data/msa.yaml). These sources supply the 8,000 MSA
 #   training examples (plus holdout) when selection is performed.
 #
-# STATUS: CANDIDATE SOURCES ACQUIRED — selection NOT yet performed.
-#   Two candidate pools are declared below (CIDAR, Arabic QA Dataset - SIGIR
-#   2024). Acquired into data/raw/ by scripts/acquire_msa_candidate_data.py.
-#   Audited in docs/data/msa_audit.md (register, formality, duplicates,
-#   passages, task types).
+# STATUS: MIXTURE REVISION IN PROGRESS — two of three intended pools BLOCKED.
+#   The intended mixture is CIDAR + PALM (MSA-only) + ArSyra (MSA-only).
+#   Verified status on 2026-10-08:
+#     - cidar   : ACQUIRED, Apache-2.0, audited. Usable now.
+#     - palm    : BLOCKED. Metadata is public and the schema is known, but the
+#                 files return 403 GatedRepoError ("not in the authorized
+#                 list"), AND the license is CC-BY-NC-ND-4.0 — NonCommercial
+#                 + NoDerivatives, which this manifest's "permitted_use" rule
+#                 cannot satisfy for a released model. See notes on the entry.
+#     - arsyra  : BLOCKED. `ArSyra/arsyra-complete` on the Hub is a 50-record
+#                 PREVIEW; the full corpus is a paid product whose access
+#                 terms say research/evaluation only and "do not
+#                 redistribute". Not a usable training source as published.
+#   Arabic QA (SIGIR 2024) is RETIRED from the mixture by decision, kept below
+#   as a documented fallback because it is MIT and already audited.
+#   The PALM MSA filter is implemented and tested (src/data/palm_msa.py,
+#   tests/test_palm_msa.py) so it is ready the moment access/licensing clears.
+
 #
 # SELECTION STRATEGY (token budgets)
 #   Selection follows the SAME strategy as the retention slice
@@ -49,27 +62,43 @@
 #   - Every source must be declared with license and permitted use.
 #
 # TODO
-#   [ ] Normalize both pools into the canonical schema (adapters, Task 4B):
-#       drop the empty-output QA row; keep the passage in `messages` for QA
-#       rows; record passage id in `variation_group`.
+#   [ ] DECIDE the second MSA pool. The requested PALM + ArSyra are both
+#       blocked (see `blocked_candidates`), so the options are:
+#         a) request PALM gate access AND obtain written permission that
+#            overrides CC-BY-NC-ND for training + weight release;
+#         b) purchase an ArSyra commercial licence;
+#         c) keep the MIT Arabic QA pool (already acquired and audited);
+#         d) find another permissively licensed MSA source.
+#       Until one is chosen, CIDAR alone (9,965 unique rows) is the only
+#       approved pool for an 8,000-example slice — enough in principle, but
+#       with no source diversity.
+#   [ ] Normalize the chosen pools into the canonical schema (adapters,
+#       Task 4B): drop the empty-output QA row; keep the passage in
+#       `messages` for QA rows; record passage id in `variation_group`.
 #   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
 #   [ ] Tokenize the normalized pools with Gemma's tokenizer (formatted) and
 #       record per-source total/assistant token totals.
-#   [ ] Fill the msa_formal token budget from CIDAR (primary) + Arabic QA
-#       (deduplicated, ≤ 2 questions/passage) — per-source token weights are
-#       an experimental decision; do NOT guess them now (see `mixture`).
+#   [ ] Fill the msa_formal token budget from CIDAR (primary) + the chosen
+#       secondary pool — per-source token weights are an experimental
+#       decision; do NOT guess them now (see `mixture`).
 #   [ ] Record the selection manifest (per-source token totals, assistant
 #       tokens, example counts, passage-cap counts, packing efficiency,
 #       padding waste) and document decisions in docs/DATA.md.
+#   [ ] If PALM is ever cleared: run `python -m src.data.palm_msa` and record
+#       the MEASURED MSA yield here (never an estimate).
+
 # =============================================================================
 
 version: 1
 name: gemma-tounsi-msa-candidates
 description: >-
-  Arabic formal-register candidate pools for the msa_formal slice. Two
-  candidate sources acquired (CIDAR, Arabic QA Dataset - SIGIR 2024) and
-  audited; final token-budget selection (8k train + 1k holdout, measured in
+  Arabic formal-register candidate pools for the msa_formal slice. Intended
+  mixture: CIDAR + PALM (MSA-only) + ArSyra (MSA-only). Only CIDAR is
+  currently usable: PALM is gated AND CC-BY-NC-ND, and the public ArSyra
+  "complete" dataset is a 50-record preview of a paid, non-redistributable
+  corpus. Final token-budget selection (8k train + 1k holdout, measured in
   tokens per configs/data/msa.yaml) not yet performed.
+
 
 constraints:
   purpose: training           # msa_formal slice — NOT evaluation, NOT retention
@@ -147,8 +176,104 @@ sources:
       (variation_group = passage id), analogous to the retention strategy's
       template caps; drop the 1 empty-output row. Acquired but not yet
       normalized into the canonical schema; selection is a later step.
+      STATUS: RETIRED from the intended mixture (replaced by PALM + ArSyra),
+      retained here as the documented fallback if those stay blocked — it is
+      MIT-licensed, already downloaded and already audited.
+
+# -----------------------------------------------------------------------------
+# blocked_candidates — requested for the mixture, NOT usable as published.
+#
+# These are deliberately NOT in `sources`: anything in `sources` is treated as
+# approved for training, and neither of these can honestly claim a
+# `permitted_use`. They are recorded here (rather than dropped) so the
+# decision and its evidence survive, and so re-checking is cheap.
+#
+# Nothing here may be acquired or trained on until BOTH a) access is granted
+# and b) a license compatible with releasing model weights is obtained in
+# writing.
+# -----------------------------------------------------------------------------
+blocked_candidates:
+  - id: palm
+    type: hf_dataset
+    location: UBC-NLP/palm
+    revision: 8ec8fb36b85317d4933f2ed9939801e0740da39c   # verified 2026-10-08
+    capability: msa_formal
+    license: CC-BY-NC-ND-4.0
+    permitted_use: NONE ESTABLISHED — see blockers
+    blockers:
+      - id: access
+        detail: >-
+          Dataset metadata is public, but file downloads fail with HTTP 403
+          GatedRepoError: "Access to dataset UBC-NLP/palm is restricted and
+          you are not in the authorized list." The gate must be approved by
+          the authors before any row can be read.
+      - id: license
+        detail: >-
+          CC-BY-NC-ND-4.0 carries both NonCommercial and NoDerivatives terms.
+          NoDerivatives conflicts with filtering/reformatting the corpus, and
+          NonCommercial conflicts with releasing generally usable model
+          weights. This is a stricter blocker than the gate: being granted
+          access would NOT by itself make the data usable here.
+    attribution: >-
+      PALM: Pluralistic Alignment for Diverse Arabic Language Models
+      (UBC-NLP) — https://huggingface.co/datasets/UBC-NLP/palm
+      — arXiv:2503.00151, arXiv:2505.21979
+    row_count: 17411            # 15,485 train + 1,926 test (dataset card)
+    upstream_schema:            # from the dataset card; NOT inferred
+      - id
+      - country
+      - topic
+      - language_variety        # the MSA/dialect discriminator
+      - instruction
+      - output
+      - correct_answer_key
+      - question_type
+    notes: >-
+      Multi-variety: MSA plus the dialects of 22 Arab countries, so it needs
+      hard MSA-only filtering before it could feed a formal-register slice.
+      That filter is already implemented and tested against the published
+      schema — src/data/palm_msa.py (+ tests/test_palm_msa.py, offline
+      synthetic fixtures) — keying on `language_variety`, then rejecting
+      dialect markers, Arabizi, Latin-dominant and answer-key-only rows, and
+      reshaping survivors into CIDAR's (output, instruction, index) structure.
+      The real MSA yield is UNMEASURED and deliberately not estimated: the
+      file cannot be read yet. Run the module's CLI once access is granted.
+
+  - id: arsyra-complete
+    type: hf_dataset
+    location: ArSyra/arsyra-complete
+    revision: null              # not pinned: contents not accessible
+    capability: msa_formal
+    license: Proprietary — commercial dataset, access-request terms
+    permitted_use: NONE ESTABLISHED — see blockers
+    blockers:
+      - id: preview_only
+        detail: >-
+          The Hugging Face dataset is a PREVIEW SAMPLE of 50 records. The full
+          corpus is sold at arsyra.com/datasets and is not on the Hub, so the
+          public artifact cannot fill a 8,000-example slice regardless of
+          licensing.
+      - id: license
+        detail: >-
+          Access terms require use "only for research or evaluation
+          purposes", forbid redistribution, and direct commercial use to
+          support@arsyra.com. Training a released model is neither research-
+          only nor non-redistributive, so this needs a purchased commercial
+          licence before use.
+    attribution: >-
+      ArSyra Arabic dialect datasets — https://arsyra.com/datasets
+      — https://huggingface.co/datasets/ArSyra/arsyra-complete
+    notes: >-
+      Quality-scored Arabic dialect data from verified native speakers, with
+      parallel MSA<->dialect text and country-level codes (ar-TN, ar-EG, ...).
+      Genuinely attractive for this project — it is native-speaker, not
+      scraped, and includes Tunisian — and it does label MSA explicitly, so
+      MSA-only filtering would be straightforward. Blocked purely on
+      availability and licensing, not on quality. Note the related
+      `ArSyra/arsyra-instruction-tuning` (11,719 records) has the same terms.
 
 preprocessing:
+
   normalization: null   # TODO: adapters (Task 4B) — drop empty-output row,
                         # keep passage in messages, record passage id in
                         # variation_group

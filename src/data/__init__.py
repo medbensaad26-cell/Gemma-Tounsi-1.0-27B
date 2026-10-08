@@ -10,6 +10,8 @@ retention  retention slice selection + holdout reservation
 split      deterministic train/holdout splitting
 mixture    project-wide mixture validation
 export     canonical -> Soup-compatible JSONL
+palm_msa   PALM -> MSA-only extraction, reshaped into the CIDAR structure
+
 
 Nothing here downloads a dataset, and nothing here trains a model.
 """
@@ -25,4 +27,7 @@ __all__ = [
     "split",
     "mixture",
     "export",
+    "palm_msa",
 ]
+
+
