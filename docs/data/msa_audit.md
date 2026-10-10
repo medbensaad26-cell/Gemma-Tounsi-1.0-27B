@@ -3,6 +3,7 @@
 **Author:** Mohamed
 **Date:** September 5, 2026
 **Status:** Complete (both candidates inspected, validated and deduplicated)
+**Superseded in part:** see **`docs/data/msa_soup_analysis.md`** (October 10, 2026) for the re-run of this analysis with reproducible artifacts. It corrects the Arabic QA near-duplicate figure below, measures the pool's passage ceiling, and identifies a token-budget shortfall for the slice.
 **Scope:** `msa_formal` slice candidate pools only — the English retention pools (MetaMathQA, Code-Feedback, SlimOrca) were NOT touched, re-downloaded, or re-analyzed.
 
 ---
@@ -105,7 +106,11 @@ Soup 0.73.3 MinHash dedup at threshold 0.85 (same setting as the retention repor
 | Dataset | Exact duplicate rows (Soup validate) | Near-duplicates removed (Soup dedup) | Unique rows remaining |
 |---|---:|---:|---:|
 | CIDAR | 29 reported (33 by strict (instruction, output) pair; consistent) | 35 | **9,965** |
-| Arabic QA – SIGIR 2024 | 1 | 2,128 | **7,872** |
+| Arabic QA – SIGIR 2024 | 1 | 2,128 ⚠️ | **7,872** ⚠️ |
+
+> ⚠️ **Corrected October 10, 2026.** The Arabic QA figures above were measured on a file that still carried the constant `source` and `language` columns. `soup data dedup` hashes *all* text fields by default, and those two columns suppress **927** duplicate detections. On the strict `instruction`/`input`/`output` fields — the only fields that will actually be trained on — the result is **−3,055 → 6,945 unique rows**. Both numbers were reproduced side by side; see `docs/data/msa_soup_analysis.md` §3.1. The CIDAR row is unaffected and reproduced exactly (−35 → 9,965).
+>
+> Two further findings from that re-run bear on this audit: Arabic QA's 10,000 questions come from only **1,500 unique passages** (so the configured 2-per-group cap leaves **2,926** usable rows, not 6,945), and `soup data langdetect` returns `"unknown"` for **100%** of rows in both pools, so it cannot enforce this slice's `language`/`script` gates.
 
 **CIDAR is essentially duplicate-free (0.35%).**
 
