@@ -15,7 +15,7 @@ Both candidate pools were audited for the 8% `msa_formal` slice using the Soup 0
 **Bottom line:**
 
 - **CIDAR is the primary MSA candidate.** It is 97%+ MSA, structurally clean (0 malformed, 35 near-duplicates), culturally relevant, and instruction-diverse. Its ~9965 unique rows comfortably cover the 8,000-example MSA target **on their own**.
-- **Arabic QA Dataset – SIGIR 2024 is a usable but structurally weaker supplement.** It is 99.9% MSA and clean (1 malformed row), but **21.3% of its rows are near-duplicates** — 10,000 questions are built on only **1,500 unique passages**, and the pool is heavily knowledge-QA weighted with very short answers (median 33 chars). Its usable unique content is roughly **1,500 passages / ~7,872 deduplicated rows**.
+- **Arabic QA Dataset – SIGIR 2024 is a usable but structurally weaker supplement.** It is 99.9% MSA and clean (1 malformed row), but **30.6% of its rows are near-duplicates** on the trained fields — 10,000 questions are built on only **1,500 unique passages**, and the pool is heavily knowledge-QA weighted with very short answers (median 33 chars). Its usable unique content is **6,945 unique rows** (3,055 near-duplicates removed), and after the configured 2-per-passage cap exactly **2,926 rows** remain.
 - **The critical MSA-vs-dialect assumption held**: neither dataset is a dialect dataset. Tunisian Derja markers are essentially absent (0 unambiguous hits in both pools after false-positive correction). Latin/code-switched content is a CIDAR-only artifact (217 rows, mostly code answers — expected and acceptable for the technical quota).
 - **Recommendation:** source the MSA slice primarily from CIDAR; use Arabic QA (deduplicated, passage-aware) as a topical-diversity supplement; cap its share so passage repetition does not skew the slice.
 
@@ -106,7 +106,7 @@ Soup 0.73.3 MinHash dedup at threshold 0.85 (same setting as the retention repor
 | Dataset | Exact duplicate rows (Soup validate) | Near-duplicates removed (Soup dedup) | Unique rows remaining |
 |---|---:|---:|---:|
 | CIDAR | 29 reported (33 by strict (instruction, output) pair; consistent) | 35 | **9,965** |
-| Arabic QA – SIGIR 2024 | 1 | 2,128 ⚠️ | **7,872** ⚠️ |
+| Arabic QA – SIGIR 2024 | 1 | 3,055 | **6,945** |
 
 > ⚠️ **Corrected October 10, 2026.** The Arabic QA figures above were measured on a file that still carried the constant `source` and `language` columns. `soup data dedup` hashes *all* text fields by default, and those two columns suppress **927** duplicate detections. On the strict `instruction`/`input`/`output` fields — the only fields that will actually be trained on — the result is **−3,055 → 6,945 unique rows**. Both numbers were reproduced side by side; see `docs/data/msa_soup_analysis.md` §3.1. The CIDAR row is unaffected and reproduced exactly (−35 → 9,965).
 >
@@ -114,7 +114,7 @@ Soup 0.73.3 MinHash dedup at threshold 0.85 (same setting as the retention repor
 
 **CIDAR is essentially duplicate-free (0.35%).**
 
-**Arabic QA's 21.3% near-duplicate rate is structural, not accidental:** the pool is **passage-based** —
+**Arabic QA's 30.6% near-duplicate rate is structural, not accidental:** the pool is **passage-based** —
 
 - 10,000 questions are built on only **1,500 unique passages** (mean ≈ 6.7 questions/passage, max 67).
 - 99.84% of rows share their passage with at least one other row.
@@ -150,7 +150,7 @@ The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout). T
 | Criterion | CIDAR | Arabic QA – SIGIR 2024 |
 |---|---|---|
 | Register (MSA) | ✅ 97.2% | ✅ 99.9% |
-| Duplicates | ✅ 9,965 unique (0.35% dup) | ⚠️ 7,872 unique rows, but only ~1,500 unique passages |
+| Duplicates | ✅ 9,965 unique (0.35% dup) | ⚠️ 6,945 unique rows (3,055 near-duplicates removed), but only ~1,500 unique passages |
 | Formality | ✅ full explanatory outputs | ⚠️ very short answers (median 33 chars) |
 | Category coverage | ✅ instruction + creative + QA + reasoning + some math/code | ⚠️ knowledge-QA dominant |
 | Coverage of 8,000 target | ✅ alone sufficient (9,965) | ❌ alone insufficient after passage-aware selection |
@@ -160,13 +160,14 @@ The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout). T
 **Supply check (post-dedup, MSA-only):**
 
 - CIDAR MSA-flagged unique rows ≈ 9,723 − ~4 duplicates ≈ **~9,700**
-- Arabic QA usable unique rows ≈ 7,872 (but ~1,500 passages ⇒ passage-aware effective diversity ≈ 1,500 topics)
-- Combined unique supply ≈ **~17,500 rows** vs. a 9,000-row requirement (8,000 train + 1,000 holdout) → supply is adequate **only if Arabic QA is counted passage-aware**; on passages alone it would be tight.
+- Arabic QA usable unique rows ≈ 6,945 (3,055 near-duplicates removed on trained fields; 1,500 unique passages ⇒ passage-aware effective diversity ≈ 1,500 topics)
+- Combined unique supply ≈ **~16,600 rows** vs. a 9,000-row requirement (8,000 train + 1,000 holdout) → supply is adequate **only if Arabic QA is counted passage-aware**; on passages alone it would be tight.
+- **Token-budget shortfall:** `msa_formal` needs ≈12.3M tokens for its 8% share but the pools supply ≈1.3M — a ~9× shortfall. See `docs/data/msa_soup_analysis.md` §4.1–4.2 for the full analysis and options.
 
 ### Verdict and recommended split
 
 1. **Primary source: CIDAR** — take the bulk of the MSA slice from its ~9,700 unique MSA rows.
-2. **Supplement: Arabic QA (deduplicated, passage-capped)** — use it to add topical diversity, with a **cap of ≤ 2 questions per passage** (diversity rule, analogous to the retention strategy's template caps). At 2 questions/passage this yields ~3,000 rows from ~1,500 passages.
+2. **Supplement: Arabic QA (deduplicated, passage-capped)** — use it to add topical diversity, with a **cap of ≤ 2 questions per passage** (diversity rule, analogous to the retention strategy's template caps). At 2 questions/passage this yields exactly **2,926 rows** from 1,500 passages (74 passages have only one question after dedup).
 3. **Drop before selection:** the 1 empty-output QA row; treat the 409 ultra-short answers as low-value for register learning.
 
 ### Selection rules carried forward (mirroring the retention strategy)
@@ -185,7 +186,7 @@ The `msa_formal` slice target is **8,000 training examples** (+1,000 holdout). T
 |---|---|
 | Audit script (register/task/quality) | `scripts/audit_msa_candidates.py` |
 | Soup dedup output — CIDAR | `data/processed/msa/cidar_deduped.jsonl` (9,965 rows) |
-| Soup dedup output — Arabic QA | `data/processed/msa/arabic_qa_deduped.jsonl` (7,872 rows) |
+| Soup dedup output — Arabic QA | `data/processed/msa/arabic_qa_deduped.jsonl` (6,945 rows) |
 | Soup langdetect output | `data/processed/msa/cidar_langdetect.jsonl`, `data/processed/msa/arabic_qa_langdetect.jsonl` |
 | Full audit results (JSON) | `data/processed/msa/audit_results.json` |
 | Source manifests | `data/manifests/msa.yaml` (revisions, licenses, provenance) |
