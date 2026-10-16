@@ -3,7 +3,7 @@
 **Analysis run:** `scripts/soup_analyze_msa.py` (14 Soup invocations, 0 failures)
 **Tooling:** Soup **v0.73.3** inside the pinned container `gemma-tounsi-soup:0.73.3`
 **Date:** October 10, 2026
-**Status:** Complete for the two available pools — CIDAR and ArabicaQA. PALM and ArSyra remain **blocked** (gated / licence; see `data/manifests/msa.yaml` → `blocked_candidates`).
+**Status:** Complete for the two available pools — CIDAR and ArabicaQA.
 **Evidence:** `data/processed/msa/soup/soup_report.json`, raw logs in `data/processed/msa/soup/logs/`, captured `--help` text in `data/processed/msa/soup/help/`.
 
 ## Executive Summary
@@ -171,7 +171,7 @@ What the pools actually supply, using Soup's approximate token averages:
 | Option | What it means | Cost |
 |---|---|---|
 | **A. Re-measure first** | Recount with Gemma's tokenizer before deciding anything. | None — **do this first, always.** |
-| **B. Widen the pools** | Pull a larger ArabicaQA sample (this is a 10k sample of a bigger corpus) to grow passage *breadth*; unblock PALM via its licence/gating. | Acquisition work; PALM's CC-BY-NC-ND licence may be a hard stop. |
+| **B. Widen the pools** | Pull a larger ArabicaQA sample (this is a 10k sample of a bigger corpus) to grow passage *breadth*; acquire Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, and Aya Dataset Arabic subset for volume. | Acquisition work. |
 | **C. Lower the share** | Reduce `msa_formal` below 0.08 to what the data can honestly fund, and redistribute to slices with surplus. | Changes the designed mixture; needs sign-off. |
 | **D. Repeat examples** | Multiple epochs over the slice to reach the token budget. | **Not recommended** — repetition on a 1,500-passage pool invites memorisation; if used at all, cap at ~2 epochs and record it. |
 

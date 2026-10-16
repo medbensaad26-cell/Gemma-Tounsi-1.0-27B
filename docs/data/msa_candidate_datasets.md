@@ -9,7 +9,7 @@ The `msa_formal` slice currently relies on three pools:
 - **Evol-Instruct-Arabic** (`FreedomIntelligence/evol-instruct-arabic`): Apache-2.0, ~59,022 rows. Added 2026-10-16.
 - **Aya Dataset Arabic subset** (`CohereForAI/aya_dataset`): Apache-2.0, ~4,947 Arabic rows. Added 2026-10-16.
 
-**PALM and ArSyra have been removed** — both are blocked by licensing and access restrictions and are no longer candidates for this project. They are not recorded under `sources:` or `blocked_candidates:` in `data/manifests/msa.yaml`. The project uses only free open source candidates going forward.
+
 
 **Critical gap:** The slice needs ≈12.3M tokens for its 8% token share but the pools supply only ≈1.3M (~9× shortfall). The three newly added pools add ~113K raw rows of volume to help close the gap, subject to dedup, register filtering, and the per-source token budget.
 
@@ -198,8 +198,6 @@ Next steps for all three:
 
 5. **Investigate Arabic STEM QA** (GoAGI/AIDA) — verify exact license and Hugging Face location; good for STEM domain coverage.
 
-### Removed (Blocked — Do Not Pursue Without Resolution)
 
-PALM (`UBC-NLP/palm`) and ArSyra (`ArSyra/arsyra-complete`) were previously listed here as blocked. They have been **removed from the project** as of 2026-10-16: neither can be accessed or licensed for training a released model, and the decision is to not pursue them without resolving access and licensing. Their blocker analysis has been archived (`docs/data/msa_palm_arsyra_blockers.md` removed from active docs). Neither dataset is recorded anywhere in `data/manifests/msa.yaml` — not under `sources:` and not under `blocked_candidates:`.
 </write_to_file>
 </write_to_file>

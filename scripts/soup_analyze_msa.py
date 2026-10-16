@@ -64,8 +64,7 @@ WHAT THIS SCRIPT DOES NOT DO
   ``data/manifests/eval.yaml`` is a skeleton with ``sources: []`` for all three
   tracks, so there is nothing to decontaminate against. The driver records that
   as a blocker rather than running a check that would trivially "pass".
-- It does not touch PALM or ArSyra: both were removed from this project
-  (blocked: gated + licence), see ``data/manifests/msa.yaml``.
+
 
 USAGE
 -----
@@ -147,12 +146,11 @@ HELP_PROBE_COMMANDS: Tuple[str, ...] = (
 # --------------------------------------------------------------------------- #
 # Pool definitions
 # --------------------------------------------------------------------------- #
-# Paths mirror `local_path` in data/manifests/msa.yaml. PALM and ArSyra were
-# removed from this project (blocked: gated + licence) and are not analyzed
-# here. The three new open-source pools (alpaca_arabic_gpt4,
-# evol_instruct_arabic, aya_dataset_arabic) are listed below but their raw
-# files do not exist until scripts/acquire_msa_candidate_data.py has run;
-# prepare_pool() raises a clear FileNotFoundError for any missing input.
+# Paths mirror `local_path` in data/manifests/msa.yaml. The three
+# open-source pools (alpaca_arabic_gpt4, evol_instruct_arabic,
+# aya_dataset_arabic) are listed below but their raw files do not exist until
+# scripts/acquire_msa_candidate_data.py has run; prepare_pool() raises a clear
+# FileNotFoundError for any missing input.
 
 
 class Pool:
@@ -728,12 +726,7 @@ def write_report(
         "soup_format": SOUP_FORMAT,
         "dedup_threshold": DEDUP_THRESHOLD,
         "pools_analyzed": [pool.pool_id for pool in POOLS],
-        "pools_excluded": {
-            "palm": "removed: gated (403 GatedRepoError) AND CC-BY-NC-ND-4.0 "
-                    "(see data/manifests/msa.yaml)",
-            "arsyra-complete": "removed: Hub artifact is a 50-record preview of "
-                               "a paid, non-redistributable corpus",
-        },
+        "pools_excluded": {},
         "preflight": preflight,
         "steps": steps,
         "eval_contamination_check": _eval_contamination_blocker(),

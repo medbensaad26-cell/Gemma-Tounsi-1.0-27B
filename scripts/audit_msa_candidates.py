@@ -365,7 +365,7 @@ def main() -> int:
     cidar_path = ROOT / "data" / "raw" / "arbml__CIDAR" / "data" / "train-00000-of-00001-b2881e1b9f14c3b1.parquet"
     qa_path = ROOT / "data" / "raw" / "bobez999__arabic-qa-dataset-sigir2024" / "data" / "arabic_qa_10k_sample.jsonl"
 
-    # New open-source pools (added 2026-10-16, replacing the removed PALM + ArSyra).
+    # New open-source pools (added 2026-10-16).
     # Raw files do not exist until scripts/acquire_msa_candidate_data.py has run.
     alpaca_path = ROOT / "data" / "raw" / "FreedomIntelligence__Alpaca-Arabic-GPT4" / "data" / "train-00000-of-00001.jsonl"
     evol_path = ROOT / "data" / "raw" / "FreedomIntelligence__evol-instruct-arabic" / "data" / "train-00000-of-00001.jsonl"
