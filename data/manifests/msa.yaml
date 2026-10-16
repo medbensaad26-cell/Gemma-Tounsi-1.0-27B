@@ -8,12 +8,7 @@
 #   slice (see configs/data/msa.yaml). These sources supply the 8,000 MSA
 #   training examples (plus holdout) when selection is performed.
 #
-# STATUS: MIXTURE REVISION IN PROGRESS — PALM and ArSyra REMOVED (blocked).
-#   PALM (UBC-NLP/palm, CC-BY-NC-ND-4.0 + gated 403) and ArSyra
-#   (ArSyra/arsyra-complete, 50-record preview + proprietary) are no longer
-#   candidates for the msa_formal slice. They are not recorded here at all —
-#   not under sources: and not under blocked_candidates: — so nothing in this
-#   manifest references data that cannot be accessed or licensed for training.
+# STATUS: MIXTURE REVISION IN PROGRESS.
 #   Verified status on 2026-10-16:
 #     - cidar                : ACQUIRED, Apache-2.0, audited. Usable now.
 #     - arabic-qa-sigir2024  : ACQUIRED, MIT, audited. Retained as fallback.
@@ -76,9 +71,7 @@
 #   [ ] Record the selection manifest (per-source token totals, assistant
 #       tokens, example counts, passage-cap counts, packing efficiency,
 #       padding waste) and document decisions in docs/DATA.md.
-#   [ ] If PALM or ArSyra are ever cleared (access + license resolved), re-add
-#       them under blocked_candidates: with full blocker evidence — do NOT add
-#       them under sources: until both conditions are met.
+
 
 # =============================================================================
 
@@ -87,12 +80,9 @@ name: gemma-tounsi-msa-candidates
 description: >-
   Arabic formal-register candidate pools for the msa_formal slice. Intended
   mixture: CIDAR (primary) + Arabic QA SIGIR 2024 (fallback supplement) +
-  Alpaca-Arabic-GPT4, Evol-Instruct-Arabic and Aya Dataset Arabic subset
-  (added 2026-10-16 as free open-source replacements for the removed PALM and
-  ArSyra pools). PALM (CC-BY-NC-ND-4.0, gated) and ArSyra (50-record preview,
-  proprietary) were removed because neither can be accessed or licensed for
-  training a released model. Final token-budget selection (8k train + 1k
-  holdout, measured in tokens per configs/data/msa.yaml) not yet performed.
+  Alpaca-Arabic-GPT4, Evol-Instruct-Arabic and Aya Dataset Arabic subset. Final
+  token-budget selection (8k train + 1k holdout, measured in tokens per configs/data/msa.yaml)
+  not yet performed.
 
 
 constraints:
@@ -171,9 +161,8 @@ sources:
       (variation_group = passage id), analogous to the retention strategy's
       template caps; drop the 1 empty-output row. Acquired but not yet
       normalized into the canonical schema; selection is a later step.
-      STATUS: RETIRED from the intended mixture (superseded by PALM + ArSyra,
-      which are now removed), retained here as the documented fallback — it is
-      MIT-licensed, already downloaded and already audited.
+      Retained as the documented fallback — it is MIT-licensed, already
+      downloaded and already audited.
 
   - id: alpaca_arabic_gpt4
     type: hf_dataset
@@ -250,16 +239,10 @@ sources:
 # -----------------------------------------------------------------------------
 # blocked_candidates — requested for the mixture, NOT usable as published.
 #
-# EMPTY as of 2026-10-16. PALM (UBC-NLP/palm) and ArSyra (ArSyra/arsyra-complete)
-# were removed from this project: neither can be accessed or licensed for
-# training a released model, and the decision is to not pursue them without
-# resolving access and licensing. Anything under sources: is treated as
-# approved for training; nothing here may be acquired or trained on until BOTH
-# a) access is granted and b) a license compatible with releasing model weights
-# is obtained in writing.
-#
-# If PALM or ArSyra are ever cleared, re-add them here (not under sources:)
-# with full blocker evidence, exactly as the previous entries were structured.
+# EMPTY — all candidates for the msa_formal slice are free, open-source pools
+# listed under sources:. Anything under sources: is treated as approved for
+# training; nothing here may be acquired or trained on without both access and
+# a license compatible with releasing model weights.
 # -----------------------------------------------------------------------------
 blocked_candidates: []
 

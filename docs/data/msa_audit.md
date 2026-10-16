@@ -19,7 +19,7 @@ Both candidate pools were audited for the 8% `msa_formal` slice using the Soup 0
 - **The critical MSA-vs-dialect assumption held**: neither dataset is a dialect dataset. Tunisian Derja markers are essentially absent (0 unambiguous hits in both pools after false-positive correction). Latin/code-switched content is a CIDAR-only artifact (217 rows, mostly code answers — expected and acceptable for the technical quota).
 - **Recommendation:** source the MSA slice primarily from CIDAR; use Arabic QA (deduplicated, passage-aware) as a topical-diversity supplement; cap its share so passage repetition does not skew the slice.
 
-> **Superseded in part — see [Addendum, October 8, 2026](#addendum-october-8-2026--proposed-mixture-change-cidar--palm--arsyra) at the end of this document.** The proposal is to replace Arabic QA with PALM and ArSyra. Both replacements are currently **blocked** (access + licensing), so the recommendation above still stands as the fallback.
+
 
 ---
 
@@ -209,13 +209,7 @@ Next steps:
 
 ---
 
-## Addendum, October 8, 2026 — proposed mixture change: CIDAR + PALM + ArSyra
 
-**Status:** 🔴 **Blocked and superseded (removed 2026-10-16).** The proposed mixture (CIDAR + PALM + ArSyra) could not be built: PALM (`UBC-NLP/palm`) is gated behind a 403 `GatedRepoError` and licensed CC-BY-NC-ND-4.0, and ArSyra (`ArSyra/arsyra-complete`) is a 50-record preview behind a proprietary commercial licence. Neither could be accessed or licensed for this project.
-
-As of 2026-10-16, PALM and ArSyra have been **removed from the project**: neither is recorded under `sources:` or `blocked_candidates:` in `data/manifests/msa.yaml`. The msa_formal slice now uses CIDAR (primary), Arabic QA SIGIR 2024 (fallback supplement), Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, and Aya Dataset Arabic subset — all free open source with Apache-2.0 or MIT licenses. The PALM MSA filter module and its tests were removed with the dataset; they can be re-implemented if PALM is ever cleared.
-
-No PALM or ArSyra row has ever been read by this project.
 
 
 

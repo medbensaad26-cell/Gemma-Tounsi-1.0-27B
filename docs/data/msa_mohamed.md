@@ -2,11 +2,11 @@
 
 **Author:** Mohamed  
 **Date:** October 10, 2026  
-**Status:** Complete for CIDAR + Arabic QA Dataset – SIGIR 2024 (inspected, validated, deduplicated with Soup); three additional open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) are recorded as candidates awaiting acquisition. PALM and ArSyra removed — blocked.
+**Status:** Complete for CIDAR + Arabic QA Dataset – SIGIR 2024 (inspected, validated, deduplicated with Soup); three additional open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) are recorded as candidates awaiting acquisition.
 
 ## Executive Summary
 
-This document details the structural and qualitative analysis of the candidate pools for the formal-register Modern Standard Arabic (MSA) slice — `msa_formal`. CIDAR and Arabic QA Dataset – SIGIR 2024 have been fully inspected, validated, and deduplicated using the Soup CLI. Both are genuine MSA corpora (97.2% and 99.9% MSA respectively), and CIDAR alone covers the 8,000-example target. Three further open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) have been added to the candidate manifest but are not yet acquired. PALM (`UBC-NLP/palm`) and ArSyra (`ArSyra/arsyra-complete`) were removed — neither could be accessed or licensed for training a released model.
+This document details the structural and qualitative analysis of the candidate pools for the formal-register Modern Standard Arabic (MSA) slice — `msa_formal`. CIDAR and Arabic QA Dataset – SIGIR 2024 have been fully inspected, validated, and deduplicated using the Soup CLI. Both are genuine MSA corpora (97.2% and 99.9% MSA respectively), and CIDAR alone covers the 8,000-example target. Three further open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) have been added to the candidate manifest but are not yet acquired.
 
 Unlike the retention slices, **this slice does not have a surplus.** CIDAR + Arabic QA supply ≈ 12,891 usable rows (adequate in example terms, 1.43× the 9,000 needed) but only ≈ 1.3M tokens against a required ≈ 12.3M tokens — a ~9× shortfall in the currency that actually matters. That supply gap is escalated rather than silently absorbed.
 
@@ -150,9 +150,7 @@ Not yet measurable — pending acquisition and the same Soup preflight.
 
 ---
 
-## Removed (Blocked — Do Not Pursue Without Resolution)
 
-**PALM** (`UBC-NLP/palm`, CC-BY-NC-ND-4.0, gated 403 `GatedRepoError`) and **ArSyra** (`ArSyra/arsyra-complete`, 50-record preview, proprietary commercial licence) were previously candidates. Both are blocked — neither could be accessed or licensed for training a released model — and have been **removed from the project**. Neither is recorded under `sources:` or `blocked_candidates:` in `data/manifests/msa.yaml`. No PALM or ArSyra row has ever been read by this project.
 
 ---
 
