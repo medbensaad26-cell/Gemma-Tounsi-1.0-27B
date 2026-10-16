@@ -1,6 +1,6 @@
 # MSA Data Analysis: Formal Register (msa_formal slice)
 
-**Author:** Mohamed  
+**Author:** Mohamed Bensaad
 **Date:** October 10, 2026  
 **Status:** Complete for CIDAR + Arabic QA Dataset – SIGIR 2024 (inspected, validated, deduplicated with Soup); three additional open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) are recorded as candidates awaiting acquisition.
 
