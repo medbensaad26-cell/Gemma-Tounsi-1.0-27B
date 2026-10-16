@@ -167,8 +167,7 @@ sources:
   - id: alpaca_arabic_gpt4
     type: hf_dataset
     location: FreedomIntelligence/Alpaca-Arabic-GPT4
-    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
-                           # acquire_msa_candidate_data.py records the real sha.
+    revision: 210c9f495163b4a68a73d969dce28b2e7dbea963
     capability: msa_formal
     license: Apache-2.0
     permitted_use: Apache-2.0 license permits use in model training and weight release
@@ -176,8 +175,8 @@ sources:
       Alpaca-Arabic-GPT4 (FreedomIntelligence) —
       https://huggingface.co/datasets/FreedomIntelligence/Alpaca-Arabic-GPT4
     row_count: 49969
-    unique_rows_after_dedup: null   # TBD after acquisition + dedup
-    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    unique_rows_after_dedup: null   # TBD after dedup
+    local_path: data/raw/FreedomIntelligence__Alpaca-Arabic-GPT4/data/train-00000-of-00001-07aa61790348d25a.parquet
     notes: >-
       ~49,969 Arabic instruction-output pairs in Alpaca format
       (instruction/input/output), translated from English Alpaca-GPT4 via
@@ -193,8 +192,7 @@ sources:
   - id: evol_instruct_arabic
     type: hf_dataset
     location: FreedomIntelligence/evol-instruct-arabic
-    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
-                           # acquire_msa_candidate_data.py records the real sha.
+    revision: 215a190de1a7713d967378eb0c043a74e692c3af
     capability: msa_formal
     license: Apache-2.0
     permitted_use: Apache-2.0 license permits use in model training and weight release
@@ -202,8 +200,8 @@ sources:
       Evol-Instruct-Arabic (FreedomIntelligence) —
       https://huggingface.co/datasets/FreedomIntelligence/evol-instruct-arabic
     row_count: 59022
-    unique_rows_after_dedup: null   # TBD after acquisition + dedup
-    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    unique_rows_after_dedup: null   # TBD after dedup
+    local_path: data/raw/FreedomIntelligence__evol-instruct-arabic/evol-instruct-arabic.json
     notes: >-
       ~59,022 Arabic instruction-output pairs in Alpaca-style format,
       generated with the Evol-Instruct method (more complex instructions than
@@ -216,8 +214,7 @@ sources:
   - id: aya_dataset_arabic
     type: hf_dataset
     location: CohereForAI/aya_dataset
-    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
-                           # acquire_msa_candidate_data.py records the real sha.
+    revision: f9ea04583f02a8f86404ff6c58bf75fe637df8a2
     capability: msa_formal
     license: Apache-2.0
     permitted_use: Apache-2.0 license permits use in model training and weight release
@@ -225,8 +222,8 @@ sources:
       Aya Dataset (CohereForAI), Arabic subset —
       https://huggingface.co/datasets/CohereForAI/aya_dataset
     row_count: 4947
-    unique_rows_after_dedup: null   # TBD after acquisition + dedup
-    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    unique_rows_after_dedup: null   # TBD after dedup
+    local_path: data/raw/CohereForAI__aya_dataset/data/train-00000-of-00001.parquet
     notes: >-
       ~4,947 Arabic rows (filtered by language_code == "arb") from the
       human-curated multilingual Aya instruction dataset (204,114 pairs across

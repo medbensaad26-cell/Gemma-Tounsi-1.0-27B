@@ -2,16 +2,14 @@
 
 ## Executive Summary
 
-The `msa_formal` slice currently relies on three pools:
-- **CIDAR** (`arbml/CIDAR`): Apache-2.0, 10K rows → 9,965 unique. Primary backbone.
-- **Arabic QA SIGIR 2024** (`bobez999/arabic-qa-dataset-sigir2024`): MIT, 10K rows → 2,926 usable after dedup + passage cap. Supplement.
-- **Alpaca-Arabic-GPT4** (`FreedomIntelligence/Alpaca-Arabic-GPT4`): Apache-2.0, ~49,969 rows. Added 2026-10-16.
-- **Evol-Instruct-Arabic** (`FreedomIntelligence/evol-instruct-arabic`): Apache-2.0, ~59,022 rows. Added 2026-10-16.
-- **Aya Dataset Arabic subset** (`CohereForAI/aya_dataset`): Apache-2.0, ~4,947 Arabic rows. Added 2026-10-16.
+The `msa_formal` slice relies on five pools:
+- **CIDAR** (`arbml/CIDAR`): Apache-2.0, 10K rows → 9,965 unique. Primary backbone. Acquired.
+- **Arabic QA SIGIR 2024** (`bobez999/arabic-qa-dataset-sigir2024`): MIT, 10K rows → 2,926 usable after dedup + passage cap. Supplement. Acquired.
+- **Alpaca-Arabic-GPT4** (`FreedomIntelligence/Alpaca-Arabic-GPT4`): Apache-2.0, 49,969 rows. ShareGPT format (id, conversations). Acquired 2026-10-16 (revision 210c9f49…).
+- **Evol-Instruct-Arabic** (`FreedomIntelligence/evol-instruct-arabic`): Apache-2.0, 59,022 rows. ShareGPT format (id, conversations). Acquired 2026-10-16 (revision 215a190d…).
+- **Aya Dataset Arabic subset** (`CohereForAI/aya_dataset`): Apache-2.0, 4,995 Arabic rows (filtered from 202,362 total). Parquet format (inputs/targets). Acquired 2026-10-16 (revision f9ea0458…).
 
-
-
-**Critical gap:** The slice needs ≈12.3M tokens for its 8% token share but the pools supply only ≈1.3M (~9× shortfall). The three newly added pools add ~113K raw rows of volume to help close the gap, subject to dedup, register filtering, and the per-source token budget.
+**Token supply:** All five pools together provide ≈41.2M approximate tokens (~3.3 chars/token) vs ≈12.3M required for the 8% token share — a 3.4× surplus. The slice is no longer supply-constrained; it is selection-constrained: choose which pools to use, in what proportion, and within what per-source caps.
 
 ---
 
@@ -24,10 +22,12 @@ The `msa_formal` slice currently relies on three pools:
 | Hugging Face | `FreedomIntelligence/Alpaca-Arabic-GPT4` |
 | License | Apache-2.0 (FreedomIntelligence projects are typically Apache-2.0) |
 | Size | ~49,969 rows (per RightNow paper merge) |
-| Format | Alpaca (instruction/input/output) |
+| Format | ShareGPT (id, conversations) — converted to Alpaca for Soup |
 | Origin | English Alpaca-GPT4 translated to Arabic via GPT-3.5/GPT-4 |
 | Register | MSA (translated formal Arabic) |
 | Use in SOTA | Used in RightNow-Arabic-0.5B-Turbo merge (129,116 unique after MD5 dedup) |
+| Approx tokens | ~9.3M (@3.3 chars/token) |
+| Max example | ~1,488 tokens (@3.3c/t) — well under the 15,500 limit |
 
 **Pros:** Large volume (~50K), Apache-2.0 permissive, already used in published Arabic fine-tuning work.
 **Cons:** Translated from English (may carry Western cultural assumptions, "Levantine media Arabic" register rather than pure MSA), GPT-4 generated responses may have licensing restrictions from OpenAI terms.
@@ -43,9 +43,11 @@ The `msa_formal` slice currently relies on three pools:
 | Hugging Face | `FreedomIntelligence/evol-instruct-arabic` |
 | License | Apache-2.0 (typical for FreedomIntelligence) |
 | Size | ~59,022 rows (per RightNow paper merge) |
-| Format | Alpaca-style instruction/output |
+| Format | ShareGPT (id, conversations) — converted to Alpaca for Soup |
 | Origin | Evol-Instruct translated to Arabic, responses regenerated |
 | Register | MSA |
+| Approx tokens | ~29.8M (@3.3 chars/token) |
+| Max example | ~4,057 tokens (@3.3c/t) — well under the 15,500 limit |
 
 **Pros:** Large volume (~59K), more complex instructions than Alpaca (Evol-Instruct method), Apache-2.0.
 **Cons:** Translated/synthetic, register may not be pure MSA.
@@ -77,11 +79,12 @@ The `msa_formal` slice currently relies on three pools:
 |-----------|-------|
 | Hugging Face | `CohereForAI/aya_dataset` |
 | License | Apache-2.0 |
-| Size | ~4,947 Arabic rows (after `language_code=="arb"` filtering, per RightNow paper) |
+| Size | 4,995 Arabic rows (after `language_code=="arb"` filtering from 202,362 total) |
 | Total dataset | 204,114 pairs across 65 languages |
-| Format | Prompt-completion |
+| Format | Parquet (inputs/targets/language/language_code/annotation_type/user_id) |
 | Origin | Human-curated multilingual instruction data |
 | Register | MSA (native speaker annotations) |
+| Approx tokens | ~0.79M (@3.3 chars/token) |
 
 **Pros:** Apache-2.0, human-curated (not translated), native Arabic speaker input, part of ACL 2024 Best Paper, high quality.
 **Cons:** Arabic subset is relatively small (~5K), may include dialectal content that needs MSA filtering.

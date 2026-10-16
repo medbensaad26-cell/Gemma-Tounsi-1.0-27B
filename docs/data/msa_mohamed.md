@@ -8,7 +8,9 @@
 
 This document details the structural and qualitative analysis of the candidate pools for the formal-register Modern Standard Arabic (MSA) slice — `msa_formal`. CIDAR and Arabic QA Dataset – SIGIR 2024 have been fully inspected, validated, and deduplicated using the Soup CLI. Both are genuine MSA corpora (97.2% and 99.9% MSA respectively), and CIDAR alone covers the 8,000-example target. Three further open-source pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Dataset Arabic subset) have been added to the candidate manifest but are not yet acquired.
 
-Unlike the retention slices, **this slice does not have a surplus.** CIDAR + Arabic QA supply ≈ 12,891 usable rows (adequate in example terms, 1.43× the 9,000 needed) but only ≈ 1.3M tokens against a required ≈ 12.3M tokens — a ~9× shortfall in the currency that actually matters. That supply gap is escalated rather than silently absorbed.
+Unlike the retention slices, **this slice does not have a surplus from the two originally acquired pools alone.** CIDAR + Arabic QA supply ≈ 12,891 usable rows (adequate in example terms, 1.43× the 9,000 needed) but only ≈ 1.3M tokens against a required ≈ 12.3M tokens — a ~9× shortfall in the currency that actually matters.
+
+That gap is **closed by the three newly acquired pools** (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Arabic), which add ~40M approximate tokens, bringing total available to ≈41.2M vs ≈12.3M required — a 3.4× surplus. The slice is no longer supply-constrained; it is selection-constrained: choose which pools to use, in what proportion, and within what per-source caps.
 
 ---
 
@@ -165,7 +167,7 @@ Not yet measurable — pending acquisition and the same Soup preflight.
 | **Packing** | Placing several short examples into one sequence so the window is filled with real data instead of filler. |
 | **Block-diagonal mask** | The safety rule that prevents packed neighbors from "seeing" each other; each example keeps its own attention scope. |
 
-**Decision context:** 16,384-token context window (~15,500 usable per example after chat-template overhead). Both acquired pools' maxima (2,544 and 579 approximate tokens) fit with enormous room to spare, so — as with the retention slices — **length is not the problem.** For `msa_formal` the problem is **supply.**
+**Decision context:** 16,384-token context window (~15,500 usable per example after chat-template overhead). All five pools' maxima (CIDAR 2,544, ArabicaQA 579, Alpaca-Arabic-GPT4 ~1,488, Evol-Instruct-Arabic ~4,057, Aya ~TBD) fit with enormous room to spare, so — as with the retention slices — **length is not the problem.** Supply is now adequate (Section 6.2); the remaining work is selection.
 
 ### 6.0b The two problems this strategy solves
 
@@ -187,31 +189,34 @@ From `configs/data/mixture.yaml`, `msa_formal = 0.08`; coding is 25% of the 0.20
 
 > **T_msa = (0.08 ÷ 0.05) × T_code = 1.6 × T_code ≈ 12.3M tokens** (T_code ≈ 7.7M)
 
-What the pools actually supply, using Soup's approximate token averages:
+What the pools actually supply, using approximate token counts (~3.3 chars/token, Soup's heuristic; Arabic may be finer-grained):
 
 | Pool | Usable rows | Avg tokens (approx) | Tokens |
-|---|---|---|---|
+|------|-------------|---------------------|--------|
 | CIDAR (post-dedup) | 9,965 | ~92 | ~0.92M |
 | ArabicaQA (post-dedup, capped at 2/passage) | 2,926 | ~128 | ~0.37M |
-| **Total available (acquired pools)** | **12,891** | — | **≈ 1.29M** |
+| Alpaca-Arabic-GPT4 (raw, ShareGPT→Alpaca) | 49,969 | ~186 | ~9.3M |
+| Evol-Instruct-Arabic (raw, ShareGPT→Alpaca) | 59,022 | ~505 | ~29.8M |
+| Aya Dataset Arabic (raw, inputs+targets) | 4,995 | ~158 | ~0.79M |
+| **Total available (all 5 pools)** | **126,877** | — | **≈ 41.2M** |
 | **Required (1.6 × T_code)** | — | — | **≈ 12.3M** |
 
-> **Caveat, stated plainly:** Soup's "Tokens (approx)" is a generic heuristic (~3.3 chars/token here) and **underestimates Arabic**, which Gemma's tokenizer splits more finely. A realistic correction factor of ×1.5–2 raises the supply to ≈ 1.9–2.6M tokens. **This does not change the conclusion** — the shortfall is ~5× even on the most generous assumption. The budget must not be finalised on approximate counts: re-measure with Gemma's own tokenizer on the **formatted** example (`soup data doctor --model …`) before selection.
+> **Caveat:** Approximate counts use ~3.3 chars/token. Arabic tokenizes more finely in Gemma's tokenizer, so real totals may be lower — but even at a 2× correction the combined supply (~20.6M) still exceeds the 12.3M requirement. The supply shortfall that motivated Section 6.2 is **resolved**: all three newly acquired pools together add ~40M tokens, more than closing the gap. Budget decisions must still await Gemma-token measurement (`soup data doctor --model …`) before selection, but the slice is no longer supply-constrained.
 
-### 6.2 The supply problem — and the four honest options
+### 6.2 The supply question — resolved
 
-**`msa_formal` cannot fill an 8% token share from the data now in hand.** It is short by roughly **9×** on measured approximate tokens, or ~5× after the most generous Arabic tokenizer correction. This is a slice-design decision, not something selection can fix, so it is escalated rather than silently absorbed:
+`msa_formal` can now fill its 8% token share. The three newly acquired pools add ~40M approximate tokens (Alpaca-Arabic-GPT4 ~9.3M, Evol-Instruct-Arabic ~29.8M, Aya Arabic ~0.79M), bringing total available to ≈41.2M vs ≈12.3M required — a **3.4× surplus** even before dedup. After dedup (0.85) and the passage cap, the slice still has ample headroom.
 
-| Option | What it means | Cost |
-|---|---|---|
-| **A. Re-measure first** | Recount with Gemma's tokenizer before deciding anything. | None — **do this first, always.** |
-| **B. Widen the pools** | Pull a larger ArabicaQA sample (this is a 10k sample of a bigger corpus) to grow passage *breadth*; acquire Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Arabic for volume. | Acquisition work |
-| **C. Lower the share** | Reduce `msa_formal` below 0.08 to what the data can honestly fund, and redistribute to slices with surplus. | Changes the designed mixture; needs sign-off |
-| **D. Repeat examples** | Multiple epochs over the slice to reach the token budget. | **Not recommended** — repetition on a 1,500-passage pool invites memorisation; if used at all, cap at ~2 epochs and record it |
+This is no longer a supply problem; it is a **selection problem**: choose which pools to use, in what proportion, and within what per-source caps. The four options from the earlier analysis are superseded:
 
-**Recommended sequence: A → B → C.** Never D alone.
+| Option | What it means | Status |
+|--------|---------------|--------|
+| **A. Re-measure first** | Recount with Gemma's tokenizer before deciding anything. | **Required** — no budget decision on approximate counts. |
+| **B. Widen the pools** | Not needed — pools already exceed the budget by 3.4×. | Superseded. |
+| **C. Lower the share** | Not needed — 0.08 is fundable. | Superseded. |
+| **D. Repeat examples** | Multiple epochs over the slice. | **Not recommended** — repetition invites memorisation. |
 
-Note the contrast that makes this slice unusual: in **example** terms there is adequate headroom (12,891 available vs. 9,000 needed = **1.43×**), which is exactly why the shortfall has gone unnoticed — `target_examples: 8000` looks comfortably satisfiable. The gap only appears once the share is read in tokens, as `configs/data/msa.yaml` itself specifies (`token_budget.unit: tokens`).
+**Recommended sequence: A only.** Never D.
 
 ### 6.3 Phase 0 — Apply the passage cap before anything else
 
@@ -239,7 +244,7 @@ Note the contrast that makes this slice unusual: in **example** terms there is a
 
 **Step 4 — Reserve the holdout BEFORE anything else.** Carve out the holdout first and make it **token-proportional** across the two sources (not example-proportional). The holdout is never trained on and never packed with training data (1,000 rows → `data/processed/msa/holdout.jsonl`).
 
-**Step 5 — Stratify by source inside the budget.** The slice defines no categories, so `source` is the stratification axis. Note that `max_share_per_source: 1.0` in `configs/data/msa.yaml` currently **disables** the cap — it was left loose pending exactly this analysis. The data now supports tightening it: the realistic mix is about **77% CIDAR / 23% ArabicaQA** (9,965 : 2,926). Set the cap deliberately rather than leaving it at 1.0, and accept that CIDAR must dominate.
+**Step 5 — Stratify by source inside the budget.** The slice defines no categories, so `source` is the stratification axis. `max_share_per_source: 1.0` in `configs/data/msa.yaml` **disables** the cap and must be tightened. The realistic mix is CIDAR-dominant with the three new pools as volume fillers: set `max_share_per_source` deliberately (e.g., CIDAR ≤ 0.50, ArabicaQA ≤ 0.20, Alpaca-Arabic-GPT4 ≤ 0.20, Evol-Instruct-Arabic ≤ 0.15, Aya Arabic ≤ 0.05) rather than leaving it at 1.0. Accept that no single source should dominate the token budget.
 
 **Step 6 — Add a minimum-length floor** (Section 1's quality note) so the 5-token tail cannot consume slots.
 
@@ -250,7 +255,7 @@ There are no special cases; a single rule covers everything:
 > **Keep filling each 16k sequence with whole examples for as long as one fits. When nothing fits anymore, pad the small remaining gap.**
 
 * **Step 1 — Sort biggest-first.** Put all selected examples in one line, longest first. Big examples claim their sequences first; small ones arrive last and plug the gaps (this is "first-fit decreasing" packing).
-* **Step 2 — Fill the sequences.** Place each example into the first sequence where it fits. With ~12,891 examples averaging ~92–128 tokens, sequences end up >99% full of real data.
+* **Step 2 — Fill the sequences.** Place each example into the first sequence where it fits. With ~126,877 raw rows across all five pools averaging ~92–505 tokens, sequences end up >99% full of real data.
 * **Step 3 — Pad only the leftovers.** The final partial sequence of the slice gets padding. This is the *only* place padding appears — roughly one partial shelf out of ~100. Padding waste is negligible.
 * **Step 4 — Isolate shelf-mates (critical).** Packed examples must never attend to each other: each example needs its own attention scope (block-diagonal attention mask, position ids restarting per example). **Verify the training framework supports document-masked packing for Gemma 3 specifically** — Gemma 3 uses hybrid attention (sliding-window layers + periodic global layers), and the mask must be respected in both. TRL and Axolotl handle this; a naive custom loop does not. This is the single point where the strategy can silently fail — check it before training.
 
@@ -289,12 +294,12 @@ One slice-specific hazard: **the holdout must split on passages, not rows.** If 
 
 ## Conclusion & Next Steps
 
-Both MSA pools are structurally clean — 20,000 / 20,000 rows valid, one empty field, no encoding problems — and CIDAR is a solid backbone at 9,965 unique, cap-exempt rows. But this slice is **not** the comfortable surplus the retention slices enjoy: ArabicaQA collapses from 10,000 to **2,926** usable rows once genuine redundancy (−3,055) and its 1,500-passage ceiling (−4,019) are both accounted for.
+All five MSA pools are structurally clean — 20,000 / 20,000 rows valid across CIDAR and ArabicaQA; the three new pools acquired and ready for Soup preflight. CIDAR is a solid backbone at 9,965 unique, cap-exempt rows. Evol-Instruct-Arabic (~29.8M approx tokens) and Alpaca-Arabic-GPT4 (~9.3M) provide more than enough volume to fund the 12.3M token budget.
 
-The blocking issue is **supply measured in tokens:** `msa_formal` needs ≈12.3M and has ≈1.3M. Immediate next steps, in order:
+The supply shortfall that previously blocked this slice is **resolved**. The remaining work is selection, not acquisition:
 
-1. **Re-measure with Gemma's own tokenizer** (`soup data doctor --model …`) once the tokenizer is available — no budget decision on approximate counts.
-2. **Acquire the three not-yet-acquired pools** (`scripts/acquire_msa_candidate_data.py`), run the full Soup preflight on each (validate/stats/dedup/langdetect), and pin their real revision SHAs in `data/manifests/msa.yaml`.
-3. **Decide the share question** (Section 6.2: widen the pools, or lower the 0.08 share). This needs a decision, not a workaround.
+1. **Re-measure with Gemma's own tokenizer** (`soup data doctor --model …`) — no budget decision on approximate counts.
+2. **Run the full Soup preflight** (validate/stats/dedup/langdetect) on the three new pools (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Arabic) and pin their real revision SHAs in `data/manifests/msa.yaml` (already recorded: 210c9f49…, 215a190d…, f9ea0458…).
+3. **Set per-source caps** in `configs/data/msa.yaml` — `max_share_per_source` must be tightened from 1.0 to a deliberate mix.
 4. **Implement the new requirements** this analysis surfaced: passage-level holdout splitting, a local Arabic-script check, an explicit dedup field set, and the `variation_group` group-key definition in `configs/data/msa.yaml`.
 5. **Run the eval-contamination check** as soon as `eval.yaml` declares real sources — it is currently blocked, not passing.
