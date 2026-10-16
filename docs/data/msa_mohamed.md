@@ -150,15 +150,32 @@ Not yet measurable — pending acquisition and the same Soup preflight.
 
 ---
 
-
-
----
-
 ## 6. Selection & Token-Budget Strategy (16k Context Window)
 
-**Reference strategy:** `docs/data/retention_mohamed.md`, Section 3 — the master reference. Vocabulary (token, context window, padding, packing, block-diagonal mask) is defined there in Section 3.1 and is not repeated. `docs/data/retention_haithem.md`, Section 2 applies the same rules to a second slice. This section applies them to `msa_formal` and adds only what is specific to it.
+**Reference strategy:** `docs/data/retention_mohamed.md`, Section 3 — the master reference. This section applies the same rules to `msa_formal` and adds only what is specific to it.
+
+### 6.0 Vocabulary (read this first)
+
+| Term | Plain-language meaning |
+|------|------------------------|
+| **Token** | A small chunk of text (~3–4 characters). Models read tokens, not letters or words. |
+| **Context window** | The maximum number of tokens the model can process at once — its "desk size". Ours is 16,384 tokens. |
+| **Example** | One training record (one MSA instruction-output pair, or one passage-grounded QA pair). |
+| **Padding** | Filling unused space in a sequence with meaningless filler tokens so all sequences in a batch have the same length (required by the GPU, but wasted compute). |
+| **Packing** | Placing several short examples into one sequence so the window is filled with real data instead of filler. |
+| **Block-diagonal mask** | The safety rule that prevents packed neighbors from "seeing" each other; each example keeps its own attention scope. |
 
 **Decision context:** 16,384-token context window (~15,500 usable per example after chat-template overhead). Both acquired pools' maxima (2,544 and 579 approximate tokens) fit with enormous room to spare, so — as with the retention slices — **length is not the problem.** For `msa_formal` the problem is **supply.**
+
+### 6.0b The two problems this strategy solves
+
+**Problem 1 — Equal example counts do NOT mean equal learning.**
+
+CIDAR examples average ~92 tokens; Arabic QA examples average ~128 tokens. Selecting equal example counts from both pools would still skew the token mass toward Arabic QA, and both pools together supply only ≈1.3M tokens against a required ≈12.3M. **Tokens are the currency; examples are not.** The shortfall is a slice-design problem, not a selection problem — it is escalated (Section 6.2), not silently absorbed.
+
+**Problem 2 — Short examples waste the context window.**
+
+The GPU needs every sequence in a batch to have the same shape. A 92-token CIDAR example stretched into a 16k slot would be ~99.4% padding — pure waste. Packing removes almost all of this waste. With averages of ~92 and ~128 tokens, this is the most packing-efficient slice in the project — roughly 120–170 examples per 16k sequence, >99% real data.
 
 ### 6.1 The anchoring rule applied to `msa_formal`
 
@@ -209,37 +226,61 @@ Note the contrast that makes this slice unusual: in **example** terms there is a
 
 ### 6.4 Phase 1 — Fill the budget
 
-1. **Wait for the anchor.** T_code is *measured*, never estimated — no MSA selection starts before the coding slice has been formatted and tokenized with Gemma's tokenizer.
-2. **Use the same token metric as every other slice** (assistant tokens preferred; total acceptable if recorded). One metric, one anchor, five budgets.
-3. **Whole examples only, ±2% tolerance.** Fill each budget with whole examples; stop before overshooting, or swap in a smaller one. Any formatted example over ~15,500 Gemma tokens is dropped **whole**, never truncated. No row in either acquired pool is anywhere near this limit.
-4. **Stratify by source inside the budget.** The slice defines no categories, so `source` is the stratification axis. Note that `max_share_per_source: 1.0` in `configs/data/msa.yaml` currently **disables** the cap — it was left loose pending exactly this analysis. The data now supports tightening it: the realistic mix is about **77% CIDAR / 23% ArabicaQA** (9,965 : 2,926). Set the cap deliberately rather than leaving it at 1.0, and accept that CIDAR must dominate.
-5. **Add a minimum-length floor** (Section 1's quality note) so the 5-token tail cannot consume slots.
-6. **Stay deterministic** — fixed order, stable sort by id, seed 42; reruns byte-identical.
+**Step 1 — Wait for the anchor.** T_code is *measured*, never estimated — no MSA selection starts before the coding slice has been formatted and tokenized with Gemma's tokenizer.
 
-### 6.5 Phase 2 — Pack and pad (unchanged; summarized)
+**Step 2 — Count the reference tokens, the right way.** Use the same token metric as every other slice (assistant tokens preferred; total acceptable if recorded). One metric, one anchor, five budgets. The budget must not be finalised on approximate counts: re-measure with Gemma's own tokenizer on the **formatted** example (`soup data doctor --model …`) before selection.
 
-Identical to the shared rules in the reference strategy: sort **biggest-first**, keep filling each 16k sequence while a whole example fits, isolate shelf-mates with **block-diagonal attention masks** (verified for Gemma 3's hybrid sliding-window + global attention), and **pad only the final partial sequence** of the slice.
+**Step 3 — Fill the MSA budget to T_msa = 1.6 × T_code (whole examples only).** Select MSA examples until the slice reaches the same token total as coding scaled by the anchoring rule:
 
-With averages of ~92 and ~128 tokens, this is the most packing-efficient slice in the project — roughly **120–170 examples per 16k sequence**, >99% real data. The entire slice is on the order of ~100 packed sequences, so padding waste is negligible.
+* **Never cut an example.** Whole examples only. Any formatted example over ~15,500 Gemma tokens is dropped **whole**, never truncated. No row in either acquired pool is anywhere near this limit.
+* **Prefer matching assistant tokens** (the true learning signal). Matching total tokens is acceptable if assistant-token counting is impractical — but then record both numbers in the manifest so the choice is documented.
+* **Stop inside a tolerance band of ±2%.** If the next example would overshoot, stop or swap in a smaller one.
+* **Stay deterministic:** fixed order, stable sort by id, seed 42 — reruns must be byte-identical.
 
-### 6.6 Holdout
+**Step 4 — Reserve the holdout BEFORE anything else.** Carve out the holdout first and make it **token-proportional** across the two sources (not example-proportional). The holdout is never trained on and never packed with training data (1,000 rows → `data/processed/msa/holdout.jsonl`).
+
+**Step 5 — Stratify by source inside the budget.** The slice defines no categories, so `source` is the stratification axis. Note that `max_share_per_source: 1.0` in `configs/data/msa.yaml` currently **disables** the cap — it was left loose pending exactly this analysis. The data now supports tightening it: the realistic mix is about **77% CIDAR / 23% ArabicaQA** (9,965 : 2,926). Set the cap deliberately rather than leaving it at 1.0, and accept that CIDAR must dominate.
+
+**Step 6 — Add a minimum-length floor** (Section 1's quality note) so the 5-token tail cannot consume slots.
+
+### 6.5 Phase 2 — Pack and pad
+
+There are no special cases; a single rule covers everything:
+
+> **Keep filling each 16k sequence with whole examples for as long as one fits. When nothing fits anymore, pad the small remaining gap.**
+
+* **Step 1 — Sort biggest-first.** Put all selected examples in one line, longest first. Big examples claim their sequences first; small ones arrive last and plug the gaps (this is "first-fit decreasing" packing).
+* **Step 2 — Fill the sequences.** Place each example into the first sequence where it fits. With ~12,891 examples averaging ~92–128 tokens, sequences end up >99% full of real data.
+* **Step 3 — Pad only the leftovers.** The final partial sequence of the slice gets padding. This is the *only* place padding appears — roughly one partial shelf out of ~100. Padding waste is negligible.
+* **Step 4 — Isolate shelf-mates (critical).** Packed examples must never attend to each other: each example needs its own attention scope (block-diagonal attention mask, position ids restarting per example). **Verify the training framework supports document-masked packing for Gemma 3 specifically** — Gemma 3 uses hybrid attention (sliding-window layers + periodic global layers), and the mask must be respected in both. TRL and Axolotl handle this; a naive custom loop does not. This is the single point where the strategy can silently fail — check it before training.
+
+### 6.6 Rules that apply everywhere
+
+1. **Tokens are the currency.** Every budget, share, and holdout split is measured in tokens.
+2. **Never cut an example.** It fits whole, or it is dropped whole (>~15,500 formatted Gemma tokens).
+3. **Tokenize with Gemma's tokenizer, on the formatted example.** Generic counters underestimate Arabic.
+4. **Stratify inside every budget** (source / length band) before counting tokens.
+5. **Deterministic always:** same inputs + seed 42 = byte-identical outputs.
+6. **Document everything in the manifest:** per-source token totals, assistant-token totals, example counts, passage-cap counts, packing efficiency, padding waste.
+
+### 6.7 Holdout
 
 Reserved **first**, before any selection, token-proportional across the two sources, never trained on, never packed with training data (1,000 rows → `data/processed/msa/holdout.jsonl`).
 
 One slice-specific hazard: **the holdout must split on passages, not rows.** If one ArabicaQA passage lands in both the holdout and training, the holdout is contaminated — the model will have seen that passage's text verbatim. Partition by `passage_sha256`, so every question from a given passage lands entirely on one side. The existing `src/data/split.py` guarantees id-level disjointness only; **passage-level disjointness is a new requirement this analysis introduces.**
 
-### 6.7 Hygiene checks
+### 6.8 Hygiene checks
 
 1. **Contamination vs. eval sets — blocked.** `data/manifests/msa.yaml` requires record-level disjointness from `eval.yaml`. `data/manifests/eval.yaml` is still a skeleton (`version: 0`, `sources: []` for all three tracks). Running `soup data decontaminate` against an empty reference set would report zero overlap for a trivial reason and would be misleading evidence, so it was deliberately not run. **Unblocks when:** `eval.yaml` declares at least one real source.
 2. **Contamination vs. public benchmarks — not meaningful as shipped.** `soup data decontaminate --benchmarks` accepts benchmark *names* only; its own help states the corpora are not bundled. Real n-gram checking requires `--benchmark-file` with an operator-supplied corpus.
 3. **`soup data doctor` — deferred.** It requires `--model` (a tokenizer id). Gemma 3 is gated and no model weights or tokenizer have been pulled. This is the right tool for the Gemma-token recount in Section 6.1 and should be run as soon as the tokenizer is available.
 4. **Arabic-script gate.** `soup data langdetect` returns `"unknown"` for 100% of rows in both pools (it is Latin-script-centric), so it cannot enforce `language: [ar]` / `script: [arabic]`. Add a Unicode-range Arabic-script check locally — sufficient and cheap — rather than delegating to Soup.
 
-### 6.8 Implementation notes
+### 6.9 Implementation notes
 
 * **`configs/data/msa.yaml`:** tighten `max_share_per_source` from the placeholder `1.0` to the measured mix (Section 6.4); add a minimum-length floor; keep `max_examples_per_variation_group: 2` (the evidence in Section 2 supports it); add the `variation_group` group-key definition (passage `sha256`).
-* **`src/data/split.py`:** add passage-level (group-aware) splitting for the holdout — Section 6.6.
-* **Script validation:** add a Unicode-range Arabic-script check locally; Soup's `langdetect` cannot do it (Section 6.7).
+* **`src/data/split.py`:** add passage-level (group-aware) splitting for the holdout — Section 6.7.
+* **Script validation:** add a Unicode-range Arabic-script check locally; Soup's `langdetect` cannot do it (Section 6.8).
 * **`src/data/dedupe.py`:** record the field set alongside every near-duplicate count, and prefer explicit `--field` over Soup's "all text fields" default so results cannot drift with the column layout (Section 6.3).
 * **`docs/data/msa_audit.md`:** supersede the ArabicaQA near-duplicate figure — **3,055, not 2,128** — and cite the field set.
 * **Manifest:** record T_code, the token metric, per-source token totals and example counts, the dedup field set and threshold, passage-cap counts, the minimum-length drop count, packing efficiency, and the contamination checks still outstanding.
