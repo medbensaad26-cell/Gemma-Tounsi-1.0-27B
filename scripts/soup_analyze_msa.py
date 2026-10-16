@@ -204,20 +204,20 @@ POOLS: Tuple[Pool, ...] = (
     Pool(
         "alpaca_arabic_gpt4",
         ROOT / "data" / "raw" / "FreedomIntelligence__Alpaca-Arabic-GPT4" / "data"
-        / "train-00000-of-00001.jsonl",
-        "jsonl",
+        / "train-00000-of-00001-07aa61790348d25a.parquet",
+        "parquet",
     ),
     Pool(
         "evol_instruct_arabic",
-        ROOT / "data" / "raw" / "FreedomIntelligence__evol-instruct-arabic" / "data"
-        / "train-00000-of-00001.jsonl",
+        ROOT / "data" / "raw" / "FreedomIntelligence__evol-instruct-arabic"
+        / "evol-instruct-arabic.json",
         "jsonl",
     ),
     Pool(
         "aya_dataset_arabic",
         ROOT / "data" / "raw" / "CohereForAI__aya_dataset" / "data"
-        / "train-00000-of-00001.jsonl",
-        "jsonl",
+        / "train-00000-of-00001.parquet",
+        "parquet",
     ),
 )
 
@@ -275,6 +275,36 @@ def _read_jsonl_rows(path: Path) -> Tuple[List[Dict[str, Any]], int]:
     return rows, bad
 
 
+def _read_json_array_rows(path: Path) -> List[Dict[str, Any]]:
+    """Read a JSON array file into row dicts."""
+    with path.open(encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, list):
+        raise RuntimeError(f"{path}: expected a JSON array, got {type(data).__name__}")
+    return [r for r in data if isinstance(r, dict)]
+
+
+def _sharegpt_to_alpaca(row: Dict[str, Any]) -> Dict[str, str]:
+    """Convert ShareGPT ``conversations`` format to Alpaca fields."""
+    conversations = row.get("conversations", [])
+    instruction = ""
+    input_text = ""
+    output = ""
+    for i, turn in enumerate(conversations):
+        role = str(turn.get("from", ""))
+        value = _as_text(turn.get("value"))
+        if role == "system":
+            instruction = value
+        elif role == "human":
+            if i == 0:
+                instruction = value
+            else:
+                input_text = value
+        elif role == "gpt":
+            output = value
+    return {"instruction": instruction, "input": input_text, "output": output}
+
+
 def _as_text(value: Any) -> str:
     """Coerce a field to a string without inventing content."""
     if value is None:
@@ -304,10 +334,29 @@ def prepare_pool(pool: Pool) -> Dict[str, Any]:
         )
 
     bad_json = 0
+    is_sharegpt = False
     if pool.reader == "parquet":
         rows = _read_parquet_rows(pool.raw_path)
+    elif pool.raw_path.suffix.lower() == ".json":
+        # Could be JSONL or a JSON array; probe the first non-whitespace char.
+        with pool.raw_path.open(encoding="utf-8") as handle:
+            first = handle.read(1)
+        if first == "[":
+            rows = _read_json_array_rows(pool.raw_path)
+            is_sharegpt = any("conversations" in r for r in rows[:5])
+        else:
+            rows, bad_json = _read_jsonl_rows(pool.raw_path)
     else:
         rows, bad_json = _read_jsonl_rows(pool.raw_path)
+
+    # Convert ShareGPT conversations to Alpaca instruction/input/output.
+    if is_sharegpt:
+        converted = []
+        for row in rows:
+            conv = _sharegpt_to_alpaca(row)
+            conv["id"] = row.get("id", "")
+            converted.append(conv)
+        rows = converted
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
