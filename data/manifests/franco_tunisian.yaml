@@ -1,0 +1,262 @@
+# =============================================================================
+# data/manifests/franco_tunisian.yaml
+# French/Tunisian code-switching candidate sources — Gemma Tounsi 1.0 (27B)
+# =============================================================================
+#
+# PURPOSE
+#   Declares the Arabic/French code-switching candidate pools for the
+#   franco_tunisian slice (12% of the training cocktail per
+#   configs/data/mixture.yaml). These sources supply the franco_tunisian
+#   training examples when selection is performed.
+#
+# STATUS: ACQUIRED — selection NOT yet performed.
+#   All five pools are downloaded into data/raw/ with revisions pinned below.
+#   Next: normalize into canonical schema, then run token-budget selection.
+#
+# SELECTION STRATEGY (token budgets — mirrors msa_formal / retention)
+#   - Tokens are the currency: the 12% franco_tunisian share is a TOKEN share;
+#     budgets and the holdout are measured in tokens, not examples.
+#   - Whole examples only; any formatted example over ~15,500 Gemma tokens
+#     (16,384 context window minus chat-template overhead) is dropped whole.
+#   - Tokenize with Gemma's own tokenizer on the FORMATTED example; record
+#     total AND assistant tokens in the selection manifest.
+#   - Holdout reserved FIRST, token-proportional across sources, never
+#     trained on, never packed with training data.
+#   - Deterministic: fixed order, stable sort by id, seed 42 — reruns must
+#     be byte-identical.
+#
+# CRITICAL DISTINCTION
+#   This file describes TRAINING data for the franco_tunisian slice.
+#   It is NOT retention data: retention is English capability preservation
+#   and is declared separately in data/manifests/retention.yaml.
+#   It is NOT evaluation data: TounsiBench, the Arabizi benchmark and the
+#   retention benchmark live in data/manifests/eval.yaml and stay disjoint.
+#
+# LICENSE NOTE
+#   linagora/Tunisian_Derja_Dataset and hamzabouajila/tunisian-derja-unified-
+#   raw-corpus are CC-BY-SA-4.0 (share-alike). Share-alike may conflict with
+#   releasing adapted model weights under Apache-2.0 — legal review required
+#   before these pools are used in a production training run.
+#
+# HARD RULES
+#   - No item in this manifest may overlap any EVAL set.
+#   - Sources must be disjoint from eval sources at the source level where
+#     possible, not merely deduplicated at the record level.
+#   - Every source must be declared with license and permitted use.
+#
+# TODO
+#   [x] ACQUIRE the five pools: run
+#       scripts/acquire_franco_tunisian_candidate_data.py (downloaded into
+#       data/raw/ on 2026-10-16).
+#   [x] PIN their revisions in this manifest (real commit SHAs recorded by the
+#       acquisition script).
+#   [ ] Normalize the chosen pools into the canonical schema (adapters,
+#       Task 4B): fields id, messages, category, source, language (+ optional
+#       script, code_switching, variation_group).
+#   [ ] Verify record-level disjointness from eval.yaml with a contamination
+#       check.
+#   [ ] Tokenize the normalized pools with Gemma's tokenizer (formatted) and
+#       record per-source total/assistant token totals.
+#   [ ] Fill the franco_tunisian token budget (12% of the cocktail) from the
+#       acquired pools — per-source token weights are an experimental decision;
+#       do NOT guess them now (see configs/data/mixture.yaml).
+#   [ ] Record the selection manifest (per-source token totals, assistant
+#       tokens, example counts, packing efficiency, padding waste) and
+#       document decisions in docs/DATA.md.
+
+
+# =============================================================================
+
+version: 1
+name: gemma-tounsi-franco-tunisian-candidates
+description: >-
+  Arabic/French code-switching candidate pools for the franco_tunisian slice.
+  Intended mixture: Farah21/reddit-tunisia-qa (primary, instruction-formatted
+  with explicit mixed/french dialect labels) + Syrinesmati/
+  tunisian-question-response-dataset (volume supplement, CC-BY 4.0) +
+  linagora/Tunisian_Derja_Dataset (TunSwitchCodeSwitching config) +
+  hamzabouajila/tunisian-derja-unified-raw-corpus +
+  linagora/linto-dataset-text-ar-tn. Final token-budget selection (12% of the
+  cocktail, measured in tokens per configs/data/mixture.yaml) not yet performed.
+
+
+constraints:
+  purpose: training           # franco_tunisian slice — NOT evaluation, NOT retention
+  contains_evaluation_data: false
+  # Must be verified against data/manifests/eval.yaml before any training run.
+  contamination_check_required: true
+  # Franco-Tunisian is a separate slice from retention and is never counted as retention.
+  is_retention_data: false
+  # Selection is by token budget (configs/data/mixture.yaml: msa_formal is 0.08,
+  # franco_tunisian is 0.12) — not by example counts.
+  selection_unit: tokens
+
+# -----------------------------------------------------------------------------
+# sources — one entry per corpus.
+#
+# Schema (all fields required once a source is added):
+#   - id:            short stable identifier, used in logs and reports
+#     type:          hf_dataset | url | local | scraped | synthetic | human
+#     location:      dataset id / URL / path (no credentials inline)
+#     revision:      commit SHA, tag, or snapshot date — MUST be pinned
+#     capability:    slice this source feeds (franco_tunisian)
+#     license:       SPDX id or explicit terms
+#     permitted_use: why redistribution/training is allowed
+#     attribution:   required credit, if any
+#     notes:         quality caveats, coverage, known issues
+#
+# STATUS: candidates identified, NOT yet acquired or selected.
+# -----------------------------------------------------------------------------
+sources:
+  - id: reddit_tunisia_qa
+    type: hf_dataset
+    location: Farah21/reddit-tunisia-qa
+    revision: b18b9ba1ef98fdfe1f1d1868fff9f62700c0821f
+    capability: franco_tunisian
+    license: TBD    # verify SPDX id before use
+    permitted_use: TBD  # confirm redistribution/training terms before use
+    attribution: >-
+      Reddit Tunisia Tech QA (TunisIA-Co-Lab) —
+      https://huggingface.co/datasets/Farah21/reddit-tunisia-qa
+    row_count: null   # ~4,541–5,500 QA pairs reported; count after normalization
+    local_path: data/raw/Farah21__reddit-tunisia-qa/train-00000-of-00001.parquet
+    notes: >-
+      Reddit-derived instruction-tuning QA pairs in Alpaca format
+      (instruction/input/output), with an explicit `dialect` label column:
+      mixed (~5,104), french (~117), tunisian_arabizi (~165), arabic (~110),
+      tunisian_arabic (~4). Strongest franco_tunisian fit: already
+      instruction-formatted with explicit French/Tunisian code-switching
+      dialect labels that can be filtered on. Small volume; treat as primary
+      seed rather than sole source. License and permitted use must be verified
+      before acquisition (TunisIA-Co-Lab open initiative — confirm exact SPDX).
+
+  - id: tunisian_question_response
+    type: hf_dataset
+    location: Syrinesmati/tunisian-question-response-dataset
+    revision: 1ae283f9d0d3271727bdd45c145d94e5eb80c1b8
+    capability: franco_tunisian
+    license: CC-BY-4.0
+    permitted_use: CC-BY 4.0 permits use in model training with attribution
+    attribution: >-
+      Tunisian Question-Response Dataset — Syrine Smati —
+      https://huggingface.co/datasets/Syrinesmati/tunisian-question-response-dataset
+    row_count: null   # ~31,000 QA pairs reported; count after normalization
+    local_path: data/raw/Syrinesmati__tunisian-question-response-dataset/train-00000-of-00001.parquet
+    notes: >-
+      ~31,000 Tunisian Darija question-answer pairs in Arabic script with
+      natural French code-switching mixed in where appropriate to the topic.
+      AI-generated, then reviewed and validated by native Tunisian speakers.
+      Fields: instruction, response, category. Code-switching scope is present
+      but not exhaustive across all domains — filter for French-CS rows rather
+      than using the whole pool. CC-BY 4.0 (attribution required; safe for
+      Apache-2.0 weight release).
+
+  - id: linagora_tunisian_derja_dataset
+    type: hf_dataset
+    location: linagora/Tunisian_Derja_Dataset
+    revision: a6defa513c5a33d68be82a7baf6da4edd43866a5
+    capability: franco_tunisian
+    license: CC-BY-SA-4.0
+    permitted_use: CC-BY-SA-4.0 — share-alike; LEGAL REVIEW REQUIRED before use
+    attribution: >-
+      Tunisian Derja Dataset — Wajdi Ghezaiel and Jean-Pierre Lorré (LINAGORA) —
+      https://huggingface.co/datasets/linagora/Tunisian_Derja_Dataset
+    row_count: null   # TunSwitchCodeSwitching config: 394,160 lines reported;
+                      # count after normalization
+    local_path: data/raw/linagora__Tunisian_Derja_Dataset/train-00001-of-00002.parquet
+    notes: >-
+      Aggregated Tunisian Derja LM corpus with 14 sub-corpora. The
+      TunSwitchCodeSwitching config (~394K lines) is the dedicated
+      code-switching subset. Raw text (single `text` field), not instruction-
+      formatted — requires conversion to canonical schema. CC-BY-SA-4.0
+      (share-alike) may conflict with Apache-2.0 weight release — legal review
+      required before use in production training.
+
+  - id: tunisian_derja_unified_raw_corpus
+    type: hf_dataset
+    location: hamzabouajila/tunisian-derja-unified-raw-corpus
+    revision: e542d360022e90caee6946392f674ed013c42201
+    capability: franco_tunisian
+    license: CC-BY-SA-4.0
+    permitted_use: CC-BY-SA-4.0 — share-alike; LEGAL REVIEW REQUIRED before use
+    attribution: >-
+      Tunisian Derja Unified Raw Corpus — Hamza Bouajila —
+      https://huggingface.co/datasets/hamzabouajila/tunisian-derja-unified-raw-corpus
+    row_count: null   # ~802,659 examples reported; count after normalization
+    local_path: data/raw/hamzabouajila__tunisian-derja-unified-raw-corpus/train-00000-of-00002.parquet
+    notes: >-
+      Aggregated Derja corpus from multiple HF sources (linagora/
+      Tunisian_Derja_Dataset, AzizBelaweid/Tunisian_Language_Dataset,
+      arbml/Tunisian_Dialect_Corpus, abdouuu/tunisian_chatbot_data,
+      khaled123/tuniset, ...). Preserves French/English code-switching but is
+      raw and noisy (URLs, emojis, short texts <10 chars, no task labels).
+      Requires heavy cleaning before canonical normalization. CC-BY-SA-4.0
+      (share-alike) may conflict with Apache-2.0 weight release — legal review
+      required before use in production training.
+
+  - id: linto_text_ar_tn
+    type: hf_dataset
+    location: linagora/linto-dataset-text-ar-tn
+    revision: 25dbb0aff3e5d4db1db5a69f7a4077280b442f4b
+    capability: franco_tunisian
+    license: CC-BY-4.0
+    permitted_use: CC-BY 4.0 permits use in model training with attribution
+    attribution: >-
+      LinTO Textual Dataset in Arabic Tunisian — Hedi Naouara, Jean-Pierre Lorré,
+      Jérôme Louradour (LINAGORA) —
+      https://huggingface.co/datasets/linagora/linto-dataset-text-ar-tn
+    row_count: null   # ~4.5M lines reported (65K code-switching); count
+                      # after normalization
+    local_path: data/raw/linagora__linto-dataset-text-ar-tn/train-00000-of-00001.parquet
+    notes: >-
+      Tunisian dialect textual corpus compiled from films, TV series, rap
+      lyrics, documentaries, stories, blogs and websites. Explicit
+      code-switching category (~65K lines, Tunisian↔French/English). CC-BY 4.0
+      (safe for Apache-2.0 weight release). ASR-oriented raw text — noisy and
+      not instruction-formatted; requires conversion to canonical schema and
+      quality filtering before use as SFT data.
+
+# -----------------------------------------------------------------------------
+# blocked_candidates — requested for the mixture, NOT usable as published.
+#
+# EMPTY — nothing here may be acquired or trained on without both access and
+# a license compatible with releasing model weights.
+# -----------------------------------------------------------------------------
+blocked_candidates: []
+
+# -----------------------------------------------------------------------------
+# preprocessing
+# -----------------------------------------------------------------------------
+preprocessing:
+  normalization: null   # TODO: Arabic-script NFC/NFKC; Arabizi casing and
+                        # digit-substitution normalization
+  cleaning: []          # TODO: drop URLs, emojis, short texts; quality heuristics
+  filters: []           # TODO: reject formatted examples over ~15,500 Gemma
+                        # tokens whole (never truncate); language-ID filtering
+  deduplication: >-
+    TBD: exact + near-duplicate (Soup MinHash 0.85) within and across sources.
+    Cross-check against eval sets still TODO.
+
+# -----------------------------------------------------------------------------
+# mixture — per-source share of the franco_tunisian slice.
+#
+# DELIBERATELY UNDECIDED. The per-source split of the franco_tunisian token
+# budget (0.12 of the cocktail per configs/data/mixture.yaml) is an experimental
+# decision and must not be guessed now; mixture weights in
+# configs/data/mixture.yaml are unchanged. Under the token-budget strategy,
+# when decided, weights are TOKEN shares of the franco_tunisian budget — not
+# example shares.
+# -----------------------------------------------------------------------------
+mixture:
+  weights: {}          # TODO: source id -> token share of the franco_tunisian budget
+  unit: tokens         # weights, when decided, are token shares
+  target_size: null    # TBD: franco_tunisian training examples (0.12 of cocktail in tokens)
+  seed: null           # TODO: 42 at selection time
+
+# -----------------------------------------------------------------------------
+# output
+# -----------------------------------------------------------------------------
+output:
+  path: data/processed/franco_tunisian/train.jsonl
+  format: jsonl
+  schema: null         # TODO: match the canonical schema (docs/DATA_SCHEMA.md)

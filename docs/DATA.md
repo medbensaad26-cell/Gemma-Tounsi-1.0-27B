@@ -39,7 +39,9 @@ readable counterpart lives in `data/manifests/`; the two must always agree.
 
 ### 2.1 Tunisian adaptation data (`data/manifests/train.yaml`)
 
-*TODO — Derja (Arabic script) and Arabizi sources.*
+*TODO — Derja (Arabic script) and Arabizi sources. Franco-Tunisian
+code-switching sources are declared separately in
+`data/manifests/franco_tunisian.yaml` (§2.4).*
 
 ### 2.2 Replay / rehearsal data (`data/manifests/retention.yaml`)
 
@@ -72,6 +74,30 @@ blending and packing are not yet implemented; legacy count fields support synthe
 ### 2.3 Evaluation data (`data/manifests/eval.yaml`)
 
 *TODO — TounsiBench, Arabizi benchmark, retention benchmark. **Evaluation only.***
+
+### 2.4 French/Tunisian code-switching data (`data/manifests/franco_tunisian.yaml`)
+
+This is **training** data for the `franco_tunisian` slice (12% of the training
+cocktail per `configs/data/mixture.yaml`). Five candidate pools are declared
+in `data/manifests/franco_tunisian.yaml`; none have been acquired or selected
+yet. See that manifest for per-source details (license, row count, notes).
+
+| # | Source | Size (reported) | Code-switching | License | Status |
+|---|--------|-----------------|----------------|---------|--------|
+| 1 | Farah21/reddit-tunisia-qa | ~4,541–5,500 QA pairs | `mixed` / `french` dialect labels | TBD — verify | Identified |
+| 2 | Syrinesmati/tunisian-question-response-dataset | ~31,000 QA pairs | French CS present, not exhaustive | CC-BY-4.0 | Identified |
+| 3 | linagora/Tunisian_Derja_Dataset (TunSwitchCodeSwitching) | ~394,160 lines | Dedicated CS config | CC-BY-SA-4.0 | Identified |
+| 4 | hamzabouajila/tunisian-derja-unified-raw-corpus | ~802,659 examples | French/English CS present | CC-BY-SA-4.0 | Identified |
+| 5 | linagora/linto-dataset-text-ar-tn | ~4.5M lines (65K CS) | Explicit CS category | CC-BY-4.0 | Identified |
+
+License note: sources #3 and #4 are CC-BY-SA-4.0 (share-alike) and require
+legal review before use in a model released under Apache-2.0. Sources #2 and #5
+are CC-BY-4.0 (attribution only; safe for Apache-2.0 weight release). Source #1
+license must be verified before acquisition.
+
+Run `scripts/acquire_franco_tunisian_candidate_data.py` to download the pools
+into `data/raw/`, then pin their revisions in `data/manifests/franco_tunisian.yaml`.
+
 
 ## 3. Preparation pipeline
 
