@@ -211,79 +211,21 @@ Next steps:
 
 ## Addendum, October 8, 2026 — proposed mixture change: CIDAR + PALM + ArSyra
 
-**Status:** 🔴 **Blocked.** The proposed mixture cannot be built today. The MSA filter for PALM is written and tested, but no PALM or ArSyra row has ever been read by this project.
+**Status:** 🔴 **Blocked and superseded (removed 2026-10-16).** The proposed mixture (CIDAR + PALM + ArSyra) could not be built: PALM (`UBC-NLP/palm`) is gated behind a 403 `GatedRepoError` and licensed CC-BY-NC-ND-4.0, and ArSyra (`ArSyra/arsyra-complete`) is a 50-record preview behind a proprietary commercial licence. Neither could be accessed or licensed for this project.
 
-### The proposal
+As of 2026-10-16, PALM and ArSyra have been **removed from the project**: neither is recorded under `sources:` or `blocked_candidates:` in `data/manifests/msa.yaml`. The msa_formal slice now uses CIDAR (primary), Arabic QA SIGIR 2024 (fallback supplement), Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, and Aya Dataset Arabic subset — all free open source with Apache-2.0 or MIT licenses. The PALM MSA filter module and its tests were removed with the dataset; they can be re-implemented if PALM is ever cleared.
 
-Replace the audited Arabic QA supplement with two multi-dialect corpora, filtered down to MSA only:
-
-| Pool | Role in the proposal |
-|---|---|
-| CIDAR | keep as primary (unchanged) |
-| PALM (`UBC-NLP/palm`) | add, **MSA-only**, reformatted into CIDAR's record structure |
-| ArSyra (`ArSyra/arsyra-complete`) | add, **MSA-only** |
-
-### What was verified (not assumed)
-
-Checked against the Hugging Face API on 2026-10-08:
-
-| Check | PALM | ArSyra |
-|---|---|---|
-| Repo resolves | ✅ `UBC-NLP/palm` @ `8ec8fb36b853…` | ✅ `ArSyra/arsyra-complete` |
-| Metadata readable | ✅ | ✅ |
-| **File download** | ❌ **HTTP 403 `GatedRepoError`** | ❌ gated behind access request |
-| **License** | ❌ **CC-BY-NC-ND-4.0** | ❌ proprietary / paid |
-| Size | 17,411 rows (15,485 train + 1,926 test) | **50-record preview** of a paid corpus |
-
-Two independent blockers, in order of severity:
-
-1. **Licensing (the hard blocker).** PALM is **CC-BY-NC-ND-4.0**. *NoDerivatives* is directly at odds with filtering and reformatting the corpus, and *NonCommercial* is at odds with releasing generally usable model weights. **Being granted access would not fix this.** ArSyra's terms are research/evaluation-only with explicit "do not redistribute" and a separate commercial licence on request.
-2. **Availability.** PALM's files return `403 … you are not in the authorized list`. ArSyra's public dataset is a **50-record sample** — the real corpus is sold at `arsyra.com/datasets`, so even with perfect licensing the Hub artifact cannot fill an 8,000-example slice.
-
-Because of blocker 1, both pools are recorded under a new `blocked_candidates:` block in `data/manifests/msa.yaml` rather than under `sources:` — anything under `sources:` is treated as cleared for training, and neither can honestly state a `permitted_use`.
-
-### What was built anyway
-
-PALM's schema is published on its dataset card, so the filter could be written against the **real** column names without guessing:
-
-```
-id · country · topic · language_variety · instruction · output · correct_answer_key · question_type
-```
-
-`src/data/palm_msa.py` implements the MSA extraction and the reformat to CIDAR's structure (`output`, `instruction`, `index`):
-
-1. **Variety gate** — keeps only `language_variety` values meaning MSA. PALM is country-organised, so country/region labels ("Tunisia", "Egyptian", "Levantine") are recognised *dialect* labels and rejected.
-2. **Content gates** — rejects whole rows (never repairs them) for: whole-word dialect markers across Maghrebi/Egyptian/Levantine/Gulf/Iraqi, Arabizi orthography (`3`/`7`/`9` substitutions), Latin-dominant text (< 80% Arabic letters), answer-key-only outputs (`"B"`), missing content, and exact duplicates.
-3. **Reformat** — survivors are emitted in CIDAR's exact 3-field structure with a dense `index`; original PALM ids are preserved in a separate id-map so provenance is not lost.
-4. **Fail-loudly guards** — a renamed/missing column, an all-rejected run, or >25% unrecognised variety labels **aborts** with the observed histogram instead of writing a plausible-looking but wrong file.
-
-This reuses the audit's hard-won lesson about **whole-word matching**: the marker list deliberately excludes words that are dialectal in usage but ordinary MSA (حاليا, مرة, خلاص, يلزم, حقي, بدو, زين, كذا, معاد …), and `tests/test_palm_msa.py` asserts those are never flagged, so a future edit cannot silently start discarding correct formal Arabic.
-
-**73 tests, all passing, entirely offline** on synthetic rows — the gated corpus is deliberately *not* a test dependency (repo total: 157 passing).
+No PALM or ArSyra row has ever been read by this project.
 
 
-### Honest limitation
 
-**The MSA yield of PALM is unknown and is not estimated here.** The dataset card says PALM spans MSA plus 22 countries' dialects, but the actual `language_variety` distribution cannot be measured without reading the file. Any number quoted before the file is readable would be a guess. Once access is cleared:
 
-```bash
-python -m src.data.palm_msa \
-  --input data/raw/UBC-NLP__palm/data/train-00000-of-00001.parquet
-```
 
-…writes the filtered pool plus a measured report (`palm_msa_report.json`: variety histogram, per-reason rejection counts, kept share) which should then be recorded in `data/manifests/msa.yaml`.
 
-### Decision required
 
-The MSA slice needs **9,000 examples** (8,000 train + 1,000 holdout). CIDAR alone supplies ~9,700 unique MSA rows, so the slice is *feasible* with CIDAR only — but with zero source diversity. Options:
 
-| # | Option | Cost |
-|---|---|---|
-| A | Request PALM access **and** written permission overriding CC-BY-NC-ND | Author correspondence; may be refused |
-| B | Purchase an ArSyra commercial licence | Money; adds genuine native-speaker MSA↔dialect data |
-| C | **Keep the MIT-licensed Arabic QA pool** (already downloaded and audited) | None — works today, with the passage cap |
-| D | Find another permissively licensed MSA corpus | Another audit cycle |
 
-Option **C** remains the only one that is actionable right now, which is why Arabic QA was left in `sources:` and marked as the fallback rather than deleted.
+
+
 
 

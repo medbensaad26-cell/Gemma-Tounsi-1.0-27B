@@ -64,8 +64,8 @@ WHAT THIS SCRIPT DOES NOT DO
   ``data/manifests/eval.yaml`` is a skeleton with ``sources: []`` for all three
   tracks, so there is nothing to decontaminate against. The driver records that
   as a blocker rather than running a check that would trivially "pass".
-- It does not touch PALM or ArSyra: both are blocked (gated + licence), see
-  ``data/manifests/msa.yaml`` -> ``blocked_candidates``.
+- It does not touch PALM or ArSyra: both were removed from this project
+  (blocked: gated + licence), see ``data/manifests/msa.yaml``.
 
 USAGE
 -----
@@ -111,7 +111,8 @@ DEDUP_THRESHOLD = 0.85
 
 #: Strict alpaca columns. Anything else (CIDAR's `index`, Arabic QA's `source` /
 #: `language`) is stripped out of the Soup input and preserved in a sidecar
-#: id-map instead -- the same provenance pattern src/data/palm_msa.py uses.
+#: id-map instead -- the same provenance pattern used throughout this
+#: project (sidecar id-map preserves fields stripped from the Soup input).
 ALPACA_FIELDS = ("instruction", "input", "output")
 
 #: Subcommands whose ``--help`` is captured by ``--probe-help``. This is how a
@@ -146,8 +147,12 @@ HELP_PROBE_COMMANDS: Tuple[str, ...] = (
 # --------------------------------------------------------------------------- #
 # Pool definitions
 # --------------------------------------------------------------------------- #
-# Paths mirror `local_path` in data/manifests/msa.yaml. PALM and ArSyra are
-# absent on purpose: they are under `blocked_candidates`, not `sources`.
+# Paths mirror `local_path` in data/manifests/msa.yaml. PALM and ArSyra were
+# removed from this project (blocked: gated + licence) and are not analyzed
+# here. The three new open-source pools (alpaca_arabic_gpt4,
+# evol_instruct_arabic, aya_dataset_arabic) are listed below but their raw
+# files do not exist until scripts/acquire_msa_candidate_data.py has run;
+# prepare_pool() raises a clear FileNotFoundError for any missing input.
 
 
 class Pool:
@@ -196,6 +201,24 @@ POOLS: Tuple[Pool, ...] = (
         "arabic_qa",
         ROOT / "data" / "raw" / "bobez999__arabic-qa-dataset-sigir2024" / "data"
         / "arabic_qa_10k_sample.jsonl",
+        "jsonl",
+    ),
+    Pool(
+        "alpaca_arabic_gpt4",
+        ROOT / "data" / "raw" / "FreedomIntelligence__Alpaca-Arabic-GPT4" / "data"
+        / "train-00000-of-00001.jsonl",
+        "jsonl",
+    ),
+    Pool(
+        "evol_instruct_arabic",
+        ROOT / "data" / "raw" / "FreedomIntelligence__evol-instruct-arabic" / "data"
+        / "train-00000-of-00001.jsonl",
+        "jsonl",
+    ),
+    Pool(
+        "aya_dataset_arabic",
+        ROOT / "data" / "raw" / "CohereForAI__aya_dataset" / "data"
+        / "train-00000-of-00001.jsonl",
         "jsonl",
     ),
 )
@@ -706,9 +729,9 @@ def write_report(
         "dedup_threshold": DEDUP_THRESHOLD,
         "pools_analyzed": [pool.pool_id for pool in POOLS],
         "pools_excluded": {
-            "palm": "blocked: gated (403 GatedRepoError) AND CC-BY-NC-ND-4.0 "
-                    "(see data/manifests/msa.yaml -> blocked_candidates)",
-            "arsyra-complete": "blocked: Hub artifact is a 50-record preview of "
+            "palm": "removed: gated (403 GatedRepoError) AND CC-BY-NC-ND-4.0 "
+                    "(see data/manifests/msa.yaml)",
+            "arsyra-complete": "removed: Hub artifact is a 50-record preview of "
                                "a paid, non-redistributable corpus",
         },
         "preflight": preflight,

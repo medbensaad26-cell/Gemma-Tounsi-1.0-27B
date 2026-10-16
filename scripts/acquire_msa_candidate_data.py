@@ -12,6 +12,9 @@ it never downloads, touches, or rewrites the English retention pools
 Datasets:
   - arbml/CIDAR                          (3.6 MB, Parquet)
   - bobez999/arabic-qa-dataset-sigir2024 (10.3 MB, JSONL)
+  - FreedomIntelligence/Alpaca-Arabic-GPT4 (~49,969 rows, Alpaca JSONL)
+  - FreedomIntelligence/evol-instruct-arabic (~59,022 rows, Alpaca-style JSONL)
+  - CohereForAI/aya_dataset (Arabic subset, ~4,947 rows; scope download to Arabic)
 """
 import json
 import os, stat
@@ -29,6 +32,9 @@ RAW_ROOT.mkdir(parents=True, exist_ok=True)
 DATASETS = [
     "arbml/CIDAR",
     "bobez999/arabic-qa-dataset-sigir2024",
+    "FreedomIntelligence/Alpaca-Arabic-GPT4",
+    "FreedomIntelligence/evol-instruct-arabic",
+    "CohereForAI/aya_dataset",
 ]
 DATASET_META = {
     "arbml/CIDAR": {
@@ -40,6 +46,21 @@ DATASET_META = {
         "dataset": "Arabic QA Dataset - SIGIR 2024",
         "license": "MIT",
         "row_count": 10000,
+    },
+    "FreedomIntelligence/Alpaca-Arabic-GPT4": {
+        "dataset": "Alpaca-Arabic-GPT4",
+        "license": "Apache-2.0",
+        "row_count": 49969,
+    },
+    "FreedomIntelligence/evol-instruct-arabic": {
+        "dataset": "Evol-Instruct-Arabic",
+        "license": "Apache-2.0",
+        "row_count": 59022,
+    },
+    "CohereForAI/aya_dataset": {
+        "dataset": "Aya Dataset (Arabic subset)",
+        "license": "Apache-2.0",
+        "row_count": 4947,
     },
 }
 
