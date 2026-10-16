@@ -870,6 +870,8 @@ class TestGuardrails:
             "slimorca",
             "starcoder",
             "openhermes",
+            "palm",
+            "arsyra",
         ]
         targets = list((REPO_ROOT / "src" / "data").glob("*.py"))
         targets += list(CONFIGS.glob("*.yaml"))

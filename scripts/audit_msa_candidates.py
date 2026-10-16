@@ -229,6 +229,39 @@ def audit_arabic_qa(path: Path) -> dict:
     return _audit_generic(rows, id_col=None, source_col=3, language_col=4, bad_json=bad_json)
 
 
+def _fields_from_record(rec: Dict[str, Any]) -> tuple:
+    """Extract (instruction, output, input, source, language) from a record.
+
+    Handles Alpaca-style records (instruction/input/output) and Aya-style
+    prompt-completion records (prompt/completion) without assuming a single
+    upstream schema.
+    """
+    instruction = rec.get("instruction") or rec.get("prompt") or ""
+    output = rec.get("output") or rec.get("completion") or rec.get("response") or ""
+    input_text = rec.get("input", "")
+    source = rec.get("source")
+    language = rec.get("language") or rec.get("language_code")
+    return instruction, output, input_text, source, language
+
+
+def audit_alpaca_style(path: Path) -> dict:
+    """Audit a JSONL pool in Alpaca or prompt-completion format."""
+    rows = []
+    bad_json = 0
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+                rows.append(_fields_from_record(rec))
+            except json.JSONDecodeError:
+                bad_json += 1
+    print(f"{path.name}: {len(rows)} rows, bad_json={bad_json}")
+    return _audit_generic(rows, id_col=None, source_col=3, language_col=4, bad_json=bad_json)
+
+
 def _audit_generic(rows, id_col=None, source_col=None, language_col=None, bad_json=0) -> dict:
     n = len(rows)
     stats = defaultdict(Counter)
@@ -332,6 +365,12 @@ def main() -> int:
     cidar_path = ROOT / "data" / "raw" / "arbml__CIDAR" / "data" / "train-00000-of-00001-b2881e1b9f14c3b1.parquet"
     qa_path = ROOT / "data" / "raw" / "bobez999__arabic-qa-dataset-sigir2024" / "data" / "arabic_qa_10k_sample.jsonl"
 
+    # New open-source pools (added 2026-10-16, replacing the removed PALM + ArSyra).
+    # Raw files do not exist until scripts/acquire_msa_candidate_data.py has run.
+    alpaca_path = ROOT / "data" / "raw" / "FreedomIntelligence__Alpaca-Arabic-GPT4" / "data" / "train-00000-of-00001.jsonl"
+    evol_path = ROOT / "data" / "raw" / "FreedomIntelligence__evol-instruct-arabic" / "data" / "train-00000-of-00001.jsonl"
+    aya_path = ROOT / "data" / "raw" / "CohereForAI__aya_dataset" / "data" / "train-00000-of-00001.jsonl"
+
     results = {}
     print("=" * 70)
     print("AUDIT: CIDAR")
@@ -343,6 +382,21 @@ def main() -> int:
     print("=" * 70)
     results["arabic_qa"] = audit_arabic_qa(qa_path)
 
+    for label, path in (
+        ("alpaca_arabic_gpt4", alpaca_path),
+        ("evol_instruct_arabic", evol_path),
+        ("aya_dataset_arabic", aya_path),
+    ):
+        if not path.exists():
+            print(f"\n{label}: raw file not found at {path} -- skipping (run "
+                  f"scripts/acquire_msa_candidate_data.py first).")
+            results[label] = {"skipped": "raw_file_not_found", "path": str(path.relative_to(ROOT))}
+            continue
+        print("=" * 70)
+        print(f"AUDIT: {label}")
+        print("=" * 70)
+        results[label] = audit_alpaca_style(path)
+
     out = ROOT / "data" / "processed" / "msa" / "audit_results.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -353,8 +407,9 @@ def main() -> int:
         print(f"\n=== {name} ===")
         for k in ("total_rows", "register", "task", "source", "malformed",
                   "exact_duplicates", "near_duplicates", "unique_after_near",
-                  "language", "lengths", "formal_penalty", "bad_json"):
-            print(f"  {k}: {res.get(k)}")
+                  "language", "lengths", "formal_penalty", "bad_json", "skipped"):
+            if k in res:
+                print(f"  {k}: {res.get(k)}")
     return 0
 
 

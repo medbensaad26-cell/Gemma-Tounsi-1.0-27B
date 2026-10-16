@@ -8,23 +8,20 @@
 #   slice (see configs/data/msa.yaml). These sources supply the 8,000 MSA
 #   training examples (plus holdout) when selection is performed.
 #
-# STATUS: MIXTURE REVISION IN PROGRESS — two of three intended pools BLOCKED.
-#   The intended mixture is CIDAR + PALM (MSA-only) + ArSyra (MSA-only).
-#   Verified status on 2026-10-08:
-#     - cidar   : ACQUIRED, Apache-2.0, audited. Usable now.
-#     - palm    : BLOCKED. Metadata is public and the schema is known, but the
-#                 files return 403 GatedRepoError ("not in the authorized
-#                 list"), AND the license is CC-BY-NC-ND-4.0 — NonCommercial
-#                 + NoDerivatives, which this manifest's "permitted_use" rule
-#                 cannot satisfy for a released model. See notes on the entry.
-#     - arsyra  : BLOCKED. `ArSyra/arsyra-complete` on the Hub is a 50-record
-#                 PREVIEW; the full corpus is a paid product whose access
-#                 terms say research/evaluation only and "do not
-#                 redistribute". Not a usable training source as published.
-#   Arabic QA (SIGIR 2024) is RETIRED from the mixture by decision, kept below
-#   as a documented fallback because it is MIT and already audited.
-#   The PALM MSA filter is implemented and tested (src/data/palm_msa.py,
-#   tests/test_palm_msa.py) so it is ready the moment access/licensing clears.
+# STATUS: MIXTURE REVISION IN PROGRESS — PALM and ArSyra REMOVED (blocked).
+#   PALM (UBC-NLP/palm, CC-BY-NC-ND-4.0 + gated 403) and ArSyra
+#   (ArSyra/arsyra-complete, 50-record preview + proprietary) are no longer
+#   candidates for the msa_formal slice. They are not recorded here at all —
+#   not under sources: and not under blocked_candidates: — so nothing in this
+#   manifest references data that cannot be accessed or licensed for training.
+#   Verified status on 2026-10-16:
+#     - cidar                : ACQUIRED, Apache-2.0, audited. Usable now.
+#     - arabic-qa-sigir2024  : ACQUIRED, MIT, audited. Retained as fallback.
+#     - alpaca_arabic_gpt4   : NOT YET ACQUIRED. Apache-2.0, ~49,969 rows.
+#     - evol_instruct_arabic : NOT YET ACQUIRED. Apache-2.0, ~59,022 rows.
+#     - aya_dataset_arabic   : NOT YET ACQUIRED. Apache-2.0, ~4,947 Arabic rows.
+#   Run scripts/acquire_msa_candidate_data.py to fetch the three not-yet-acquired
+#   pools, then pin their revisions in this manifest.
 
 #
 # SELECTION STRATEGY (token budgets)
@@ -62,30 +59,26 @@
 #   - Every source must be declared with license and permitted use.
 #
 # TODO
-#   [ ] DECIDE the second MSA pool. The requested PALM + ArSyra are both
-#       blocked (see `blocked_candidates`), so the options are:
-#         a) request PALM gate access AND obtain written permission that
-#            overrides CC-BY-NC-ND for training + weight release;
-#         b) purchase an ArSyra commercial licence;
-#         c) keep the MIT Arabic QA pool (already acquired and audited);
-#         d) find another permissively licensed MSA source.
-#       Until one is chosen, CIDAR alone (9,965 unique rows) is the only
-#       approved pool for an 8,000-example slice — enough in principle, but
-#       with no source diversity.
-#   [ ] Normalize the chosen pools into the canonical schema (adapters,
-#       Task 4B): drop the empty-output QA row; keep the passage in
-#       `messages` for QA rows; record passage id in `variation_group`.
+#   [ ] ACQUIRE the three not-yet-acquired pools: run
+#       scripts/acquire_msa_candidate_data.py (downloads Alpaca-Arabic-GPT4,
+#       Evol-Instruct-Arabic, Aya Dataset Arabic subset into data/raw/).
+#   [ ] PIN their revisions in this manifest (replace the 2026-10-16 snapshot
+#       date pins with the real commit SHAs recorded by the acquisition script).
+#   [ ] Normalize the chosen pools into the canonical schema (adapters, Task 4B):
+#       drop the empty-output QA row; keep the passage in `messages` for QA rows;
+#       record passage id in `variation_group`.
 #   [ ] Verify record-level disjointness from eval.yaml with a contamination check.
 #   [ ] Tokenize the normalized pools with Gemma's tokenizer (formatted) and
 #       record per-source total/assistant token totals.
-#   [ ] Fill the msa_formal token budget from CIDAR (primary) + the chosen
-#       secondary pool — per-source token weights are an experimental
-#       decision; do NOT guess them now (see `mixture`).
+#   [ ] Fill the msa_formal token budget from CIDAR (primary) + Arabic QA
+#       (fallback) + the three new open-source pools — per-source token weights
+#       are an experimental decision; do NOT guess them now (see `mixture`).
 #   [ ] Record the selection manifest (per-source token totals, assistant
 #       tokens, example counts, passage-cap counts, packing efficiency,
 #       padding waste) and document decisions in docs/DATA.md.
-#   [ ] If PALM is ever cleared: run `python -m src.data.palm_msa` and record
-#       the MEASURED MSA yield here (never an estimate).
+#   [ ] If PALM or ArSyra are ever cleared (access + license resolved), re-add
+#       them under blocked_candidates: with full blocker evidence — do NOT add
+#       them under sources: until both conditions are met.
 
 # =============================================================================
 
@@ -93,11 +86,13 @@ version: 1
 name: gemma-tounsi-msa-candidates
 description: >-
   Arabic formal-register candidate pools for the msa_formal slice. Intended
-  mixture: CIDAR + PALM (MSA-only) + ArSyra (MSA-only). Only CIDAR is
-  currently usable: PALM is gated AND CC-BY-NC-ND, and the public ArSyra
-  "complete" dataset is a 50-record preview of a paid, non-redistributable
-  corpus. Final token-budget selection (8k train + 1k holdout, measured in
-  tokens per configs/data/msa.yaml) not yet performed.
+  mixture: CIDAR (primary) + Arabic QA SIGIR 2024 (fallback supplement) +
+  Alpaca-Arabic-GPT4, Evol-Instruct-Arabic and Aya Dataset Arabic subset
+  (added 2026-10-16 as free open-source replacements for the removed PALM and
+  ArSyra pools). PALM (CC-BY-NC-ND-4.0, gated) and ArSyra (50-record preview,
+  proprietary) were removed because neither can be accessed or licensed for
+  training a released model. Final token-budget selection (8k train + 1k
+  holdout, measured in tokens per configs/data/msa.yaml) not yet performed.
 
 
 constraints:
@@ -176,101 +171,97 @@ sources:
       (variation_group = passage id), analogous to the retention strategy's
       template caps; drop the 1 empty-output row. Acquired but not yet
       normalized into the canonical schema; selection is a later step.
-      STATUS: RETIRED from the intended mixture (replaced by PALM + ArSyra),
-      retained here as the documented fallback if those stay blocked — it is
+      STATUS: RETIRED from the intended mixture (superseded by PALM + ArSyra,
+      which are now removed), retained here as the documented fallback — it is
       MIT-licensed, already downloaded and already audited.
+
+  - id: alpaca_arabic_gpt4
+    type: hf_dataset
+    location: FreedomIntelligence/Alpaca-Arabic-GPT4
+    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
+                           # acquire_msa_candidate_data.py records the real sha.
+    capability: msa_formal
+    license: Apache-2.0
+    permitted_use: Apache-2.0 license permits use in model training and weight release
+    attribution: >-
+      Alpaca-Arabic-GPT4 (FreedomIntelligence) —
+      https://huggingface.co/datasets/FreedomIntelligence/Alpaca-Arabic-GPT4
+    row_count: 49969
+    unique_rows_after_dedup: null   # TBD after acquisition + dedup
+    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    notes: >-
+      ~49,969 Arabic instruction-output pairs in Alpaca format
+      (instruction/input/output), translated from English Alpaca-GPT4 via
+      GPT-3.5/GPT-4. Apache-2.0 permissive license; already used in published
+      Arabic fine-tuning work (RightNow-Arabic merge). Register is translated
+      formal Arabic / MSA — verify Arabic-script purity and filter register
+      drift before selection. Adds ~50K rows of volume to close the msa_formal
+      token-budget shortfall (~12.3M tokens needed vs ~1.3M supplied by CIDAR +
+      Arabic QA). Cons: translated from English (may carry Western cultural
+      assumptions, "Levantine media Arabic" register rather than pure MSA);
+      GPT-4-generated responses may carry OpenAI terms-of-use considerations.
+
+  - id: evol_instruct_arabic
+    type: hf_dataset
+    location: FreedomIntelligence/evol-instruct-arabic
+    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
+                           # acquire_msa_candidate_data.py records the real sha.
+    capability: msa_formal
+    license: Apache-2.0
+    permitted_use: Apache-2.0 license permits use in model training and weight release
+    attribution: >-
+      Evol-Instruct-Arabic (FreedomIntelligence) —
+      https://huggingface.co/datasets/FreedomIntelligence/evol-instruct-arabic
+    row_count: 59022
+    unique_rows_after_dedup: null   # TBD after acquisition + dedup
+    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    notes: >-
+      ~59,022 Arabic instruction-output pairs in Alpaca-style format,
+      generated with the Evol-Instruct method (more complex instructions than
+      plain Alpaca), responses regenerated in Arabic. Apache-2.0. Complements
+      CIDAR's culturally-relevant instructions with higher instruction
+      complexity. Register is translated/synthetic MSA — verify Arabic-script
+      purity and filter register drift before selection. Cons: translated /
+      synthetic; register may not be pure MSA.
+
+  - id: aya_dataset_arabic
+    type: hf_dataset
+    location: CohereForAI/aya_dataset
+    revision: 2026-10-16   # snapshot date pin — CONFIRM after download; scripts/
+                           # acquire_msa_candidate_data.py records the real sha.
+    capability: msa_formal
+    license: Apache-2.0
+    permitted_use: Apache-2.0 license permits use in model training and weight release
+    attribution: >-
+      Aya Dataset (CohereForAI), Arabic subset —
+      https://huggingface.co/datasets/CohereForAI/aya_dataset
+    row_count: 4947
+    unique_rows_after_dedup: null   # TBD after acquisition + dedup
+    local_path: null   # not yet acquired — run scripts/acquire_msa_candidate_data.py
+    notes: >-
+      ~4,947 Arabic rows (filtered by language_code == "arb") from the
+      human-curated multilingual Aya instruction dataset (204,114 pairs across
+      65 languages; ACL 2024 Best Paper). Apache-2.0, native speaker input —
+      not machine-translated — high-quality MSA signal, different provenance
+      from the translated FreedomIntelligence pools. Cons: relatively small
+      (~5K); may include dialectal content that needs MSA filtering; the full
+      dataset is large, so acquisition should scope to the Arabic subset.
 
 # -----------------------------------------------------------------------------
 # blocked_candidates — requested for the mixture, NOT usable as published.
 #
-# These are deliberately NOT in `sources`: anything in `sources` is treated as
-# approved for training, and neither of these can honestly claim a
-# `permitted_use`. They are recorded here (rather than dropped) so the
-# decision and its evidence survive, and so re-checking is cheap.
+# EMPTY as of 2026-10-16. PALM (UBC-NLP/palm) and ArSyra (ArSyra/arsyra-complete)
+# were removed from this project: neither can be accessed or licensed for
+# training a released model, and the decision is to not pursue them without
+# resolving access and licensing. Anything under sources: is treated as
+# approved for training; nothing here may be acquired or trained on until BOTH
+# a) access is granted and b) a license compatible with releasing model weights
+# is obtained in writing.
 #
-# Nothing here may be acquired or trained on until BOTH a) access is granted
-# and b) a license compatible with releasing model weights is obtained in
-# writing.
+# If PALM or ArSyra are ever cleared, re-add them here (not under sources:)
+# with full blocker evidence, exactly as the previous entries were structured.
 # -----------------------------------------------------------------------------
-blocked_candidates:
-  - id: palm
-    type: hf_dataset
-    location: UBC-NLP/palm
-    revision: 8ec8fb36b85317d4933f2ed9939801e0740da39c   # verified 2026-10-08
-    capability: msa_formal
-    license: CC-BY-NC-ND-4.0
-    permitted_use: NONE ESTABLISHED — see blockers
-    blockers:
-      - id: access
-        detail: >-
-          Dataset metadata is public, but file downloads fail with HTTP 403
-          GatedRepoError: "Access to dataset UBC-NLP/palm is restricted and
-          you are not in the authorized list." The gate must be approved by
-          the authors before any row can be read.
-      - id: license
-        detail: >-
-          CC-BY-NC-ND-4.0 carries both NonCommercial and NoDerivatives terms.
-          NoDerivatives conflicts with filtering/reformatting the corpus, and
-          NonCommercial conflicts with releasing generally usable model
-          weights. This is a stricter blocker than the gate: being granted
-          access would NOT by itself make the data usable here.
-    attribution: >-
-      PALM: Pluralistic Alignment for Diverse Arabic Language Models
-      (UBC-NLP) — https://huggingface.co/datasets/UBC-NLP/palm
-      — arXiv:2503.00151, arXiv:2505.21979
-    row_count: 17411            # 15,485 train + 1,926 test (dataset card)
-    upstream_schema:            # from the dataset card; NOT inferred
-      - id
-      - country
-      - topic
-      - language_variety        # the MSA/dialect discriminator
-      - instruction
-      - output
-      - correct_answer_key
-      - question_type
-    notes: >-
-      Multi-variety: MSA plus the dialects of 22 Arab countries, so it needs
-      hard MSA-only filtering before it could feed a formal-register slice.
-      That filter is already implemented and tested against the published
-      schema — src/data/palm_msa.py (+ tests/test_palm_msa.py, offline
-      synthetic fixtures) — keying on `language_variety`, then rejecting
-      dialect markers, Arabizi, Latin-dominant and answer-key-only rows, and
-      reshaping survivors into CIDAR's (output, instruction, index) structure.
-      The real MSA yield is UNMEASURED and deliberately not estimated: the
-      file cannot be read yet. Run the module's CLI once access is granted.
-
-  - id: arsyra-complete
-    type: hf_dataset
-    location: ArSyra/arsyra-complete
-    revision: null              # not pinned: contents not accessible
-    capability: msa_formal
-    license: Proprietary — commercial dataset, access-request terms
-    permitted_use: NONE ESTABLISHED — see blockers
-    blockers:
-      - id: preview_only
-        detail: >-
-          The Hugging Face dataset is a PREVIEW SAMPLE of 50 records. The full
-          corpus is sold at arsyra.com/datasets and is not on the Hub, so the
-          public artifact cannot fill a 8,000-example slice regardless of
-          licensing.
-      - id: license
-        detail: >-
-          Access terms require use "only for research or evaluation
-          purposes", forbid redistribution, and direct commercial use to
-          support@arsyra.com. Training a released model is neither research-
-          only nor non-redistributive, so this needs a purchased commercial
-          licence before use.
-    attribution: >-
-      ArSyra Arabic dialect datasets — https://arsyra.com/datasets
-      — https://huggingface.co/datasets/ArSyra/arsyra-complete
-    notes: >-
-      Quality-scored Arabic dialect data from verified native speakers, with
-      parallel MSA<->dialect text and country-level codes (ar-TN, ar-EG, ...).
-      Genuinely attractive for this project — it is native-speaker, not
-      scraped, and includes Tunisian — and it does label MSA explicitly, so
-      MSA-only filtering would be straightforward. Blocked purely on
-      availability and licensing, not on quality. Note the related
-      `ArSyra/arsyra-instruction-tuning` (11,719 records) has the same terms.
+blocked_candidates: []
 
 preprocessing:
 
@@ -283,7 +274,9 @@ preprocessing:
   deduplication: >-
     Soup MinHash 0.85 done (CIDAR: 9,965 unique; Arabic QA: 7,872 unique —
     artifacts in data/processed/msa/*_deduped.jsonl). Cross-check against
-    eval sets still TODO.
+    eval sets still TODO. Run dedup over the three newly acquired pools
+    (alpaca_arabic_gpt4, evol_instruct_arabic, aya_dataset_arabic) once they
+    are downloaded and normalized.
 
 # -----------------------------------------------------------------------------
 # mixture — per-source share of the msa_formal slice.
