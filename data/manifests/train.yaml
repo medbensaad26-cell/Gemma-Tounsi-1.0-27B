@@ -8,8 +8,10 @@
 #   data (Derja in Arabic script + Arabizi), and how those sources are combined
 #   into data/train.jsonl.
 #
-# STATUS: SKELETON. No sources declared yet. Nothing is downloaded from here;
-#   this manifest is the input contract for scripts/prepare_data.sh.
+# STATUS: SOURCES DECLARED, NOT YET ACQUIRED. Three candidate sources are
+#   declared with pinned revisions; nothing is downloaded. Preprocessing,
+#   mixture and output sections are still TODO. Nothing is downloaded from
+#   here; this manifest is the input contract for scripts/prepare_data.sh.
 #
 # HARD RULES
 #   - Every source must be declared here BEFORE it is used. Undeclared data
@@ -21,19 +23,20 @@
 #     retention.yaml, not here.
 #
 # TODO
-#   [ ] Identify candidate Derja / Arabizi corpora and verify licensing.
-#   [ ] Declare each source using the schema documented below.
+#   [x] Identify candidate Derja / Arabizi corpora and verify licensing.
+#   [x] Declare each source using the schema documented below.
 #   [ ] Decide mixture weights (NOT decided yet — see `mixture`).
 #   [ ] Define normalization rules for Arabic script and Arabizi.
 #   [ ] Define dedup + contamination checks against every eval set.
 #   [ ] Mirror all provenance decisions in docs/DATA.md.
 # =============================================================================
 
-version: 0
+version: 1
 name: gemma-tounsi-train
 description: >-
-  Tunisian Arabic (Derja + Arabizi) adaptation training mixture. Skeleton only:
-  no sources have been selected, licensed, or downloaded.
+  Tunisian Arabic (Derja + Arabizi) adaptation training mixture. Three
+  candidate sources declared and license-reviewed (see docs/DATA.md §2.1);
+  none downloaded yet. Mixture weights not decided.
 
 # Guarantees asserted by this manifest; prepare_data.sh should verify them.
 constraints:
@@ -56,18 +59,81 @@ constraints:
 #     attribution:   required credit, if any
 #     notes:         quality caveats, dialect coverage, known issues
 # -----------------------------------------------------------------------------
-sources: []
-  # TODO: declare sources here. Example shape (commented out on purpose):
-  #
-  # - id: example-derja-corpus
-  #   type: hf_dataset
-  #   location: <org/dataset>
-  #   revision: <commit-sha>
-  #   script: derja_arabic
-  #   license: <SPDX-id>
-  #   permitted_use: <justification>
-  #   attribution: <required credit>
-  #   notes: <caveats>
+sources:
+  - id: linto-text-ar-tn-derja
+    type: hf_dataset
+    location: linagora/linto-dataset-text-ar-tn
+    revision: 25dbb0aff3e5d4db1db5a69f7a4077280b442f4b
+    script: derja_arabic
+    license: Apache-2.0
+    permitted_use: >-
+      PROVISIONAL. Dataset card declares Apache-2.0, but it is a compilation
+      of third-party corpora and the same subsets also appear in
+      linagora/Tunisian_Derja_Dataset under CC-BY-SA-4.0. Per-subset upstream
+      licenses must be traced before production use.
+    attribution: >-
+      LINAGORA Labs, LinTO Tunisian text dataset (arXiv:2504.02604);
+      per-subset upstream credits to be completed.
+    notes: >-
+      991,371 raw rows in 20 subsets, columns ids/text/text_raw, 77-100%
+      Arabic script per subset, no instruction format (adapters must build
+      messages). CANDIDATE subsets: Derja_tunsi, HkayetTounsia, KisatiAna,
+      TunBERT, TuDiCOI, HkayetErwi, TunHistoires, Chakhabitt, TRCD, TSAC
+      (toxicity filter), Tweet_TN (PII filter). EXCLUDED: T-HSAB (hate
+      speech), TN_RAP_lyrics (copyrighted lyrics), BRAD (not Tunisian, to
+      verify), CombinedNames (content unclear), Tunisien_Dialect_Summary-llama2
+      (model-generated). TunSwitch subsets (775K rows, 99-100% Arabic script)
+      are claimed by franco_tunisian.yaml; origin check pending. Overlap with
+      franco_tunisian.yaml and with linagora/Tunisian_Derja_Dataset must be
+      deduplicated before token counting.
+
+  - id: farah21-tunisia-tech-arabizi
+    type: hf_dataset
+    location: Farah21/Tunisia_Tech
+    revision: be5ca6c51c2c6c7557da73672be030eeb64c68be
+    script: arabizi
+    license: CC-BY-4.0
+    permitted_use: >-
+      Dataset card declares CC-BY-4.0. Underlying text is Reddit user posts;
+      confirm that the card's license covers third-party content before
+      production use.
+    attribution: Farah21 (TunisIA-Co-Lab), Reddit Tunisia Tech QA dataset.
+    notes: >-
+      Use ONLY rows with dialect == tunisian_arabizi (165 rows) from the train
+      split. Test split (550 rows) is EXCLUDED from training. Overlaps
+      Farah21/reddit-tunisia-qa (strict subset, same ids); rows used by
+      franco_tunisian.yaml must not be counted twice. Replies are other users'
+      comments, not assistant answers; filter PII, political rants and
+      mental-health disclosures.
+
+  - id: ctab-arabizi
+    type: url
+    location: https://zenodo.org/records/4781769
+    revision: zenodo-4781769-v4-2021-05-11
+    script: arabizi
+    license: CC-BY-4.0
+    permitted_use: >-
+      Zenodo record declares CC-BY-4.0 (attribution only). Messages were
+      scraped from public Facebook pages; PII handling required.
+    attribution: >-
+      Amara A., Turki H., Hadj Taieb M.A., Ben Aouicha M., Ellouze K. -
+      CTAB: Corpus of Tunisian Arabizi (2021), Data Engineering and
+      Semantics Research Unit, University of Sfax; part of the Tunisian
+      Arabic Corpus (tunisiya.org).
+    notes: >-
+      13 files (CTAB-SAMPLE0001..0013.txt, ~306 kB of text plus CTAB.pdf),
+      one raw Arabizi message per line, no annotation or spelling
+      normalization. File names suggest a sample; check tunisiya.org for a
+      larger release. Very small (est. ~100K tokens): seed and
+      detector/eval-grade material, not slice volume. Message count, md5
+      verification and PII scan pending acquisition.
+
+# EXCLUDED / QUARANTINED (not declared; see docs/DATA.md §2.1)
+#   linagora/Tunisian_Derja_Dataset    CC-BY-SA-4.0, duplicates linto subsets, legal review
+#   hamzabouajila/tunisian-derja-unified-raw-corpus   CC-BY-SA-4.0, re-upload of the above
+#   tunis-ai/MADAR-TUN                 CC-BY-NC-3.0 on card (paper says CC-BY-SA-4.0)
+#   chaymafourati/tunizi               license unknown, loader script only
+#   khaled123/Tunisian_Dialectic_English_Derja   CreativeML Open RAIL-M
 
 # -----------------------------------------------------------------------------
 # preprocessing — applied when building processed/ from raw/.
