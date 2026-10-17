@@ -39,9 +39,39 @@ readable counterpart lives in `data/manifests/`; the two must always agree.
 
 ### 2.1 Tunisian adaptation data (`data/manifests/train.yaml`)
 
-*TODO — Derja (Arabic script) and Arabizi sources. Franco-Tunisian
-code-switching sources are declared separately in
-`data/manifests/franco_tunisian.yaml` (§2.4).*
+Candidates for the `arabizi` and `arabic_derja` slices. Revisions are pinned
+(commit SHAs verified on 2026-10-17). Franco-Tunisian pools are declared in
+§2.4; where a source is used by both slices (Farah21, Linto) each slice takes a
+disjoint subset and rows are never counted twice. Licenses are as declared by
+the dataset cards; sources marked provisional need a license trace before any
+production run. Attribution is required for all CC-BY sources and is recorded in
+the model card.
+
+| ID | Location @ revision | Type / size | Script | License | Status |
+|----|--------------------|-------------|--------|---------|--------|
+| farah21-tunisia-tech-arabizi | `Farah21/Tunisia_Tech` @ `be5ca6c5…8be` | hf_dataset, 5,500 Q&A rows (4,950 train / 550 test), Alpaca-style, Reddit r/Tunisia | mostly English; 165 rows labelled `tunisian_arabizi`, 4 `tunisian_arabic` | CC-BY-4.0 | **Arabizi-labelled train rows only.** `Farah21/reddit-tunisia-qa` is a strict subset (all 4,541 ids) and is the franco source in §2.4; shared rows are used once. Test split excluded from training. Replies are other users' comments, not assistant answers. |
+| linto-text-ar-tn-derja | `linagora/linto-dataset-text-ar-tn` @ `25dbb0af…f4b` | hf_dataset, 991,371 raw rows in 20 subsets | Arabic script (77–100% per subset) | Apache-2.0 on card; **provisional** (same subsets appear in a CC-BY-SA repo) | **Per-subset review.** Candidates: Derja_tunsi, HkayetTounsia, KisatiAna, TunBERT, TuDiCOI, HkayetErwi, TunHistoires, Chakhabitt, TRCD, TSAC (toxicity filter), Tweet_TN (PII filter). Excluded: T-HSAB (hate speech), TN_RAP_lyrics (copyright), BRAD (not Tunisian, to verify), CombinedNames (content unclear), Tunisien_Dialect_Summary-llama2 (model-generated). TunSwitch ×2 (775K rows) belongs to §2.4; origin check pending. |
+| ctab-arabizi | CTAB, Zenodo record 4781769 (v4, 2021-05-11) | url, 13 files (~306 kB text), one raw Arabizi Facebook message per line | Arabizi | CC-BY-4.0 | **Accepted, very small** (est. ~100K tokens). File names suggest a sample; check tunisiya.org for a larger release. PII filtering required. Message count and md5 check pending acquisition. |
+
+Quarantined / excluded (not declared in `train.yaml`):
+
+| Source | Reason |
+|--------|--------|
+| `linagora/Tunisian_Derja_Dataset` (CC-BY-SA-4.0) | Same subsets as Linto (identical row counts on 8). Share-alike may conflict with an Apache-2.0 release; needs legal review. |
+| `hamzabouajila/tunisian-derja-unified-raw-corpus` (CC-BY-SA-4.0) | Re-upload of Linagora and other datasets; derivative. |
+| `tunis-ai/MADAR-TUN` (CC-BY-NC-3.0 on card; paper says CC-BY-SA-4.0) | Non-commercial; conflict unresolved. |
+| `chaymafourati/tunizi` (license unknown) | Repo holds a loader script only; Kaggle copy says GPL-2. |
+| `khaled123/Tunisian_Dialectic_English_Derja` (RAIL-M) | Use restrictions, mixed provenance. |
+
+Known gaps (drive the rest of Phase 1):
+1. **Arabizi is scarce.** Verified real Arabizi is ~165 labelled Farah21 rows
+   plus CTAB (~100K tokens estimated), against a slice that needs tens of
+   millions of tokens at 35% of the mixture. The slice needs synthetic
+   Derja→Arabizi transliteration and authored data.
+2. **No assistant-style data.** Candidates are raw comments, tweets and
+   stories; schema adapters must build instruction/chat tasks around them.
+3. **Safety/privacy.** Reddit and social-media text needs PII and toxicity
+   filtering before any training use.
 
 ### 2.2 Replay / rehearsal data (`data/manifests/retention.yaml`)
 
