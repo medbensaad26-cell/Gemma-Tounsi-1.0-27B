@@ -99,8 +99,9 @@ sources:
       production use.
     attribution: Farah21 (TunisIA-Co-Lab), Reddit Tunisia Tech QA dataset.
     notes: >-
-      Use ONLY rows with dialect == tunisian_arabizi (165 rows) from the train
-      split. Test split (550 rows) is EXCLUDED from training. Overlaps
+      Use ONLY rows with dialect == tunisian_arabizi from the train split 
+      (148 rows; 17 more exist in the test split, which is excluded).
+      Test split (550 rows) is EXCLUDED from training. Overlaps
       Farah21/reddit-tunisia-qa (strict subset, same ids); rows used by
       franco_tunisian.yaml must not be counted twice. Replies are other users'
       comments, not assistant answers; filter PII, political rants and
