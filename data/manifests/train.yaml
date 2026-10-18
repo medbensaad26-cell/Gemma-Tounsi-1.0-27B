@@ -125,8 +125,8 @@ sources:
       one raw Arabizi message per line, no annotation or spelling
       normalization. File names suggest a sample; check tunisiya.org for a
       larger release. Very small (est. ~100K tokens): seed and
-      detector/eval-grade material, not slice volume. Message count, md5
-      verification and PII scan pending acquisition.
+      detector/eval-grade material, not slice volume. 5,702 non-blank 
+      messages; all 14 files md5-verified against Zenodo; PII scan pending.
 
 # EXCLUDED / QUARANTINED (not declared; see docs/DATA.md §2.1)
 #   linagora/Tunisian_Derja_Dataset    CC-BY-SA-4.0, duplicates linto subsets, legal review
