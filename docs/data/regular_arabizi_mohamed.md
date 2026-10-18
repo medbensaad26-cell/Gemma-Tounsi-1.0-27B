@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document details the structural and qualitative analysis of the candidate datasets for the Regular Arabizi slice of the Tunisian adaptation. Both TUNIZI v2 and TArC have been inspected, validated, and are pending deduplication using the Soup CLI. Both datasets are highly viable and provide a surplus of examples for the Regular Arabizi target.
+This document details the structural and qualitative analysis of the candidate datasets for the Regular Arabizi slice of the Tunisian adaptation. Both TUNIZI v2 and TArC have been acquired into `data/raw/` and are pending Soup preflight (`validate` / `stats` / `dedup` / `doctor`). Both datasets are highly viable and provide a surplus of examples for the Regular Arabizi target.
 
 ---
 
@@ -14,15 +14,16 @@ This document details the structural and qualitative analysis of the candidate d
 
 ### Dataset Overview
 
-* **Source:** `iCompass-ai/TUNIZI` (Zenodo record 4275240)
+* **Source:** Zenodo record 4275240 (iCompass, WANLP 2021)
+* **Acquired at:** `data/raw/iCompass__TUNIZI_v2/tunizi_train`
 * **Total Rows:** ~100,000 comments
-* **Format:** Plain text with sentiment labels (positive / negative / neutral)
-* **License:** Open (iCompass, WANLP 2021)
-* **Status:** Open, not yet acquired locally
+* **Format:** Plain text with sentiment labels (positive / negative / neutral), `target;sentence` per line
+* **License:** CC-BY-4.0
+* **Status:** Acquired, immutable, read-only
 
 ### Structural Analysis (planned via Soup)
 
-Not yet executed — pending local acquisition and Soup preflight:
+Not yet executed — Soup (0.73.3) lives only in the pinned container `ghcr.io/makazhanalpamys/soup:0.73.3`. Run inside the container:
 
 * `soup data validate` — schema conformity on canonical fields
 * `soup data stats` — length distribution, empty fields
@@ -45,7 +46,7 @@ Topics span movies, politics, sport, comedy, TV shows, TV series, arts, and Tuni
 
 ### Quality Note
 
-Comments were collected from public social media via Common Crawl-based scraping. Links, emoji symbols, and punctuation were removed during preprocessing. Annotation was performed by ten Tunisian native speakers (two male PhD holders, eight others). Negative comments may include offensive or insulting content; a toxicity filter should be applied before selection.
+Comments were collected from public social media via Common Crawl-based scraping. Links, emoji symbols, and punctuation were removed during preprocessing. Annotation was performed by ten Tunisian native speakers (two male PhD holders, eight others). Negative comments may include offensive or insulting content; a toxicity filter should be applied before selection. CC-BY-4.0 is permissive — compatible with commercial model release.
 
 ---
 
@@ -53,15 +54,16 @@ Comments were collected from public social media via Common Crawl-based scraping
 
 ### Dataset Overview
 
-* **Source:** `eligugliotta/tarc`
+* **Source:** `arbml/TArC` on HuggingFace
+* **Acquired at:** `data/raw/arbml__TArC/data/train-00000-of-00001-78418db42dbbfaf0.parquet`
 * **Total Rows:** 4,797 sentences / 43,327 tokens
-* **Format:** Tab-separated files by genre (forum.tab, social.tab, blog.tab, rap.tab) with columns: data, arabish, class, coda, token, pos, governorate, age, gender
-* **License:** CC BY-NC-SA 4.0 (**non-commercial**)
-* **Status:** Open (GitHub), not yet acquired locally
+* **Format:** Parquet → canonical Alpaca JSONL via Soup adapters (Task 4B)
+* **License:** CC-BY-NC-SA-4.0 (**non-commercial**)
+* **Status:** Acquired, immutable, read-only
 
 ### Structural Analysis (planned via Soup)
 
-Not yet executed — pending local acquisition and Soup preflight:
+Not yet executed — pending Soup preflight in the pinned container:
 
 * `soup data validate` — schema conformity on canonical fields
 * `soup data stats` — length distribution, empty fields
@@ -94,7 +96,7 @@ TArC is CC BY-NC-SA 4.0 — share-alike with a non-commercial clause. Derivative
 **Added:** October 18, 2026  
 **Decision context:** The model will train with a **16,384-token context window** (~15,500 tokens usable per example after chat-template overhead).
 
-> **Note:** Length is not the main selection concern — **balance and diversity** are.
+> **Note:** This section supersedes any earlier length-based caps. With a 16k window, length is not the main selection concern — **balance and diversity** are.
 
 This section is self-contained and pedagogic: it explains not only *what* we will do, but *why*, so any team member can read it top-to-bottom and understand the whole plan.
 
@@ -204,4 +206,6 @@ There are no special cases; a single rule covers everything:
 
 ## Conclusion & Next Steps
 
-TUNIZI v2 and TArC are structurally sound, highly diverse, and provide a surplus for the Regular Arabizi target. Task 8 will implement the strategy in Section 3: select Regular Arabizi first (TUNIZI v2 by diversity rules, supplemented by TArC annotated sentences), match the Math-and-Coding-Arabizi token budget with whole, stratified examples (~0.75 × T_regular_arabizi), reserve a token-proportional holdout, and pack biggest-first with padding only as the final-gap safety net. The same recipe then extends to the remaining Derja/Arabizi categories (regular Derja, math-and-coding Derja).
+TUNIZI v2 and TArC are structurally sound, highly diverse, and provide a surplus for the Regular Arabizi target. Both are acquired into `data/raw/` with provenance sidecars and read-only permissions. Task 8 will implement the strategy in Section 3: select Regular Arabizi first (TUNIZI v2 by diversity rules, supplemented by TArC annotated sentences), match the Math-and-Coding-Arabizi token budget with whole, stratified examples (~0.75 × T_regular_arabizi), reserve a token-proportional holdout, and pack biggest-first with padding only as the final-gap safety net. The same recipe then extends to the remaining Derja/Arabizi categories (regular Derja, math-and-coding Derja).
+
+**Soup preflight blocker:** `soup` (0.73.3) is not on the host PATH. It runs only inside `ghcr.io/makazhanalpamys/soup:0.73.3`. Execute `docker compose run --rm soup-cpu python scripts/soup_analyze_arabizi.py` (or equivalent) inside the container to produce validate/stats/dedup/doctor numbers for both pools before any budget decision.
