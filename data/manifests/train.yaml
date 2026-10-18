@@ -129,6 +129,74 @@ sources:
       detector/eval-grade material, not slice volume. 5,702 non-blank 
       messages; all 14 files md5-verified against Zenodo; PII scan pending.
 
+  - id: syrinesmati-tunisian-dialect-corpus
+    type: hf_dataset
+    location: Syrinesmati/tunisian-dialect-corpus
+    revision: main
+    script: derja_arabic
+    license: Apache-2.0
+    permitted_use: >-
+      Dataset card declares Apache-2.0. Permits use in model training and
+      release of adapted weights under Apache-2.0.
+    attribution: >-
+      Tunisian Dialect Corpus (Cleaned Arabic-Only) — Syrinesmati —
+      https://huggingface.co/datasets/Syrinesmati/tunisian-dialect-corpus
+    notes: >-
+      1,180,174 cleaned Tunisian Arabic (Derja) rows in Arabic script,
+      single `text` field, ~208 MB parquet. Aggregated and cleaned from
+      14 public sources (linagora/Tunisian_Derja_Dataset,
+      atakaboudi/Dialect_of_Tunisia-Work_Collection, tunis-ai/
+      tunisian-msa-parallel-corpus, Arbi-Houssem STT/TTS, linagora/
+      linto-asr-ar-tn-0.1, TADI, tunbert/TAD, khaled123/tunninjaar,
+      Hala-Mulki/T-HSAB non-hate rows, Tunisian Reading Comprehension,
+      Naim Mhedhbi corpus, TSAC, khaled123/Testtun, khaled123/Tuniset).
+      Raw text, not instruction-formatted — requires conversion to canonical
+      schema and quality filtering. NOTE: derived from CC-BY-SA-4.0 upstream
+      sources (linagora/Tunisian_Derja_Dataset among them); card declares
+      Apache-2.0 but share-alike provenance should be re-verified before
+      production use.
+
+  - id: linagora-fineweb2-tunisian-arabic
+    type: hf_dataset
+    location: linagora/fineweb2_Tunisian_Arabic
+    revision: main
+    script: derja_arabic
+    license: ODC-By-1.0
+    permitted_use: >-
+      Open Data Commons Attribution License v1.0; permits redistribution and
+      re-use with attribution. Safe for Apache-2.0 weight release.
+    attribution: >-
+      FineWeb2 Tunisian Arabic portion — LINAGORA Labs, June 2025 —
+      https://huggingface.co/datasets/linagora/fineweb2_Tunisian_Arabic
+    notes: >-
+      265,217 Tunisian Arabic (aeb) rows from Common Crawl, Arabic script.
+      Fields: text, id, dump, url, date, file_path, language, language_score,
+      language_script, minhash_cluster_size, top_langs. Web/forum text,
+      noisy and not instruction-formatted; requires cleaning and conversion
+      to canonical schema. Language-ID score field present (>=0.32 observed);
+      filter on language_score before use.
+
+  - id: tuniizi-v2-arabizi
+    type: url
+    location: https://zenodo.org/records/4275240
+    revision: zenodo-4275240-v1-2020-11-13
+    script: arabizi
+    license: CC-BY-4.0
+    permitted_use: >-
+      Zenodo record declares CC-BY-4.0 (attribution only). Comments extracted
+      from public social media; manually annotated by Tunisian native speakers.
+    attribution: >-
+      Chayma Fourati, Abir Messaoudi, Hatem Haddad, Moez BenHajhmida,
+      Aymen Ben Elhaj Mabrouk, Malek Naski — TUNIZI v2: A large Tunisian
+      Arabizi Dialectal Dataset for Sentiment Analysis (WANLP 2021),
+      iCompass.
+    notes: >-
+      ~100k Arabizi comments (movies, politics, sport, …) annotated positive/
+      negative/neutral. CC-BY-4.0 on Zenodo (DOI 10.5281/zenodo.4275240).
+      Raw sentiment-labeled text, not instruction-formatted; requires
+      conversion to canonical schema. PII scan pending. v1 (9,210 sentences)
+      also exists on Zenodo/GitHub; v2 is the larger release.
+
 # EXCLUDED / QUARANTINED (not declared; see docs/DATA.md §2.1)
 #   linagora/Tunisian_Derja_Dataset    CC-BY-SA-4.0, duplicates linto subsets, legal review
 #   hamzabouajila/tunisian-derja-unified-raw-corpus   CC-BY-SA-4.0, re-upload of the above
