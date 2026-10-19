@@ -28,6 +28,7 @@ CLI
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from dataclasses import dataclass, field
@@ -387,6 +388,13 @@ class RetentionSelection:
     train_assistant_tokens: Dict[str, int] = field(default_factory=dict)
     holdout_token_totals: Dict[str, int] = field(default_factory=dict)
 
+    # --- tagged-source hygiene (Task 9, retention_haithem.md) ----------
+    tag_rule_version: str = ""
+    tagging_audit_results: List[Dict[str, Any]] = field(default_factory=list)
+    template_cap_counts: Dict[str, Any] = field(default_factory=dict)
+    translation_task_decision: str = ""
+    cross_contamination_check: Dict[str, Any] = field(default_factory=dict)
+
     @property
     def train_counts(self) -> Dict[str, int]:
         """Per-category counts in the training set."""
@@ -444,6 +452,14 @@ class RetentionSelection:
                 "train_total_tokens": self.train_total_tokens,
                 "train_assistant_tokens": self.train_assistant_tokens,
                 "holdout_token_totals": self.holdout_token_totals,
+            }
+        if self.tag_rule_version:
+            manifest["retention_haithem"] = {
+                "tag_rule_version": self.tag_rule_version,
+                "tagging_audit_results": self.tagging_audit_results,
+                "template_cap_counts": self.template_cap_counts,
+                "translation_task_decision": self.translation_task_decision,
+                "cross_contamination_check": self.cross_contamination_check,
             }
         return manifest
 
@@ -744,6 +760,98 @@ def _remove_ids(records: Sequence[Dict[str, Any]], ids: set[str]) -> List[Dict[s
     ]
 
 
+def _system_prompt_text(record: Dict[str, Any]) -> str:
+    """Return the system turn content, or empty string if none."""
+    for turn in record.get("messages", []):
+        if isinstance(turn, dict) and turn.get("role") == "system":
+            return str(turn.get("content", ""))
+    return ""
+
+
+def _template_key(record: Dict[str, Any]) -> str:
+    """Stable hash of the system prompt (FLAN task template identifier)."""
+    return hashlib.sha256(_system_prompt_text(record).encode("utf-8")).hexdigest()[:16]
+
+
+def _cap_templates(
+    pool: Sequence[Dict[str, Any]],
+    cap_per_template: int,
+    source_to_cap: str = "",
+) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, int]]]:
+    """Cap records of ``source_to_cap`` at ``cap_per_template`` per unique system prompt.
+
+    Records of other sources pass through unchanged. Within each template,
+    records are kept in deterministic id order. When ``source_to_cap`` is empty,
+    no capping is applied.
+
+    Returns (capped_pool, per_template_counts) where per_template_counts maps
+    template key to {"kept": n, "dropped": n}.
+    """
+    if not source_to_cap:
+        return list(pool), {}
+
+    capped_source: Dict[str, List[Dict[str, Any]]] = {}
+    others: List[Dict[str, Any]] = []
+    for record in pool:
+        if str(record.get("source", "")) == source_to_cap:
+            capped_source.setdefault(_template_key(record), []).append(record)
+        else:
+            others.append(record)
+
+    kept: List[Dict[str, Any]] = list(others)
+    counts: Dict[str, Dict[str, int]] = {}
+    for template_id in sorted(capped_source):
+        group = capped_source[template_id]
+        group.sort(key=lambda r: str(r.get("id", "")))
+        take = min(cap_per_template, len(group))
+        kept.extend(group[:take])
+        counts[template_id] = {
+            "kept": take,
+            "dropped": len(group) - take,
+            "system_prompt_preview": _system_prompt_text(group[0])[:80] if group else "",
+        }
+
+    kept.sort(key=lambda record: str(record.get("id", "")))
+    return kept, counts
+
+
+def _check_cross_contamination(
+    reasoning_picks: Sequence[Dict[str, Any]],
+    math_picks: Sequence[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Check reasoning picks against math picks for exact duplicates.
+
+    Compares user-turn content across both sets. Exact matches indicate
+    cross-dataset contamination (the same example selected for two
+    different retention categories).
+    """
+    reasoning_texts = {
+        _user_content_text(r)
+        for r in reasoning_picks
+        if str(r.get("category")) == "reasoning"
+    }
+    math_texts = {
+        _user_content_text(r)
+        for r in math_picks
+        if str(r.get("category")) == "mathematics"
+    }
+    exact_matches = reasoning_texts & math_texts
+
+    return {
+        "reasoning_count": len(reasoning_texts),
+        "math_count": len(math_texts),
+        "exact_matches": len(exact_matches),
+        "examples": sorted(exact_matches)[:5],
+        "clean": len(exact_matches) == 0,
+    }
+
+
+def _user_content_text(record: Dict[str, Any]) -> str:
+    """Return the last user turn content from a record."""
+    user_turns = [m.get("content", "") for m in record.get("messages", []) if m.get("role") == "user"]
+    return user_turns[-1] if user_turns else ""
+
+
 def select_retention_token_budget(
     candidates: Sequence[Dict[str, Any]],
     spec: Optional[RetentionSpec] = None,
@@ -752,16 +860,28 @@ def select_retention_token_budget(
     scale: float = 1.0,
     seed: Optional[int] = None,
     counter: Optional[TokenCounter] = None,
+    # --- tagged-source hygiene (Task 9, retention_haithem.md) ----------
+    tag_rule_version: str = "",
+    tagging_audit_results: Optional[Sequence[Dict[str, Any]]] = None,
+    template_cap_per_template: int = 200,
+    template_cap_source: str = "",
+    translation_task_decision: str = "",
 ) -> RetentionSelection:
     """Select the retention train set + holdout by token budget (production).
 
-    Implements docs/data/retention_mohamed.md Section 3:
+    Implements docs/data/retention_mohamed.md Section 3 and
+    docs/data/retention_haithem.md Section 2:
 
     * filter + dedupe + tokenize every candidate;
     * drop whole examples over ``max_formatted_tokens_per_example``;
     * select the coding anchor (``anchor_target_examples`` × scale) with source
       diversity and measure its token mass ``T_code``;
     * reserve a token-proportional holdout FIRST (never trained on);
+    * fill every other category to ``multiplier × T_code`` whole examples,
+      stopping inside the ``±tolerance`` band;
+    * apply tagged-source template caps (≤ ``template_cap_per_template`` per unique
+      system prompt) before budget filling;
+    * fail loudly when a category cannot be filled.
     * fill every other category to ``multiplier × T_code`` whole examples,
       stopping inside the ``±tolerance`` band;
     * fail loudly when a category cannot be filled.
@@ -880,6 +1000,8 @@ def select_retention_token_budget(
 
     holdout_records: List[Dict[str, Any]] = []
     holdout_token_totals: Dict[str, int] = {}
+    # Accumulate tagged-source template-cap stats across holdout + train (Task 9).
+    all_template_counts: Dict[str, Any] = {}
     for category in sorted(spec.holdout_category_shares):
         share = spec.holdout_category_shares[category]
         category_target = holdout_target_tokens * share
@@ -888,6 +1010,11 @@ def select_retention_token_budget(
             for record in remaining
             if str(record.get("category")) == category
         ]
+        # --- template cap per source (Task 9: retention_haithem.md Sec 2.3) ---
+        category_pool, template_counts = _cap_templates(
+            category_pool, template_cap_per_template, template_cap_source
+        )
+        all_template_counts.update(template_counts)
         selected, total = _fill_token_budget(
             category_pool,
             category_target,
@@ -928,6 +1055,11 @@ def select_retention_token_budget(
             for record in remaining
             if str(record.get("category")) == category
         ]
+        # --- template cap per source (Task 9: retention_haithem.md Sec 2.3) ---
+        category_pool, template_counts = _cap_templates(
+            category_pool, template_cap_per_template, template_cap_source
+        )
+        all_template_counts.update(template_counts)
         selected, total = _fill_token_budget(
             category_pool,
             target_tokens,
@@ -957,6 +1089,17 @@ def select_retention_token_budget(
     train_records.sort(key=lambda record: str(record.get("id", "")))
     holdout_records.sort(key=lambda record: str(record.get("id", "")))
 
+    # --- tagged-source cross-contamination vs math picks (Task 9) ---
+    reasoning_picks = [
+        r for r in train_records if str(r.get("category")) == "reasoning"
+    ]
+    math_picks = [
+        r for r in train_records if str(r.get("category")) == "mathematics"
+    ]
+    cross_contamination = _check_cross_contamination(
+        reasoning_picks, math_picks
+    )
+
     selection = RetentionSelection(
         train=train_records,
         holdout=holdout_records,
@@ -971,6 +1114,11 @@ def select_retention_token_budget(
         train_total_tokens=train_total_tokens,
         train_assistant_tokens=train_assistant_tokens,
         holdout_token_totals=holdout_token_totals,
+        tag_rule_version=tag_rule_version,
+        tagging_audit_results=list(tagging_audit_results or []),
+        template_cap_counts=all_template_counts,
+        translation_task_decision=translation_task_decision,
+        cross_contamination_check=cross_contamination,
     )
     selection.assert_no_contamination()
 
@@ -1036,14 +1184,54 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
     parser.add_argument("--seed", type=int, default=None, help="override the seed")
+    parser.add_argument(
+        "--tag-rule-version",
+        default="",
+        help="tagged-source tag-rule version (retention_haithem.md Sec 2.2)",
+    )
+    parser.add_argument(
+        "--tagging-audit",
+        default=None,
+        help="path to tagged-source tag audit JSON (retention_haithem.md Sec 2.2)",
+    )
+    parser.add_argument(
+        "--template-cap",
+        type=int,
+        default=200,
+        help="max tagged-source examples per unique system prompt template (default 200)",
+    )
+    parser.add_argument(
+        "--translation-decision",
+        default="keep",
+        help="translation-task decision for the manifest",
+    )
+    parser.add_argument(
+        "--template-cap-source",
+        default="",
+        help="source whose records are template-capped (Task 9 hygiene)",
+    )
     args = parser.parse_args(argv)
 
     try:
         spec = load_retention_spec(args.config)
         loaded = load_jsonl(args.candidates)
+        tagging_audit_results = None
+        if args.tagging_audit:
+            import json as _json
+            tagging_audit_results = _json.loads(
+                Path(args.tagging_audit).read_text(encoding="utf-8")
+            ).get("audit_results")
         if args.mode == "token_budget":
             selection = select_retention_token_budget(
-                loaded.records, spec, scale=args.scale, seed=args.seed
+                loaded.records,
+                spec,
+                scale=args.scale,
+                seed=args.seed,
+                tag_rule_version=args.tag_rule_version,
+                tagging_audit_results=tagging_audit_results,
+                template_cap_per_template=args.template_cap,
+                template_cap_source=args.template_cap_source,
+                translation_task_decision=args.translation_decision,
             )
         else:
             selection = select_retention(
