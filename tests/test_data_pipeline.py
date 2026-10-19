@@ -24,6 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.data import dedupe, export, mixture, retention, schema, split, stats, validate  # noqa: E402
+from src.data.retention import RetentionSpec  # noqa: E402
 
 SYNTHETIC = REPO_ROOT / "data" / "synthetic"
 RAW = SYNTHETIC / "raw"
@@ -426,8 +427,248 @@ class TestRetentionSelection:
 
 
 # --------------------------------------------------------------------------- #
+# 4c. Retention token-budget selection (Task 8, retention_mohamed.md Section 3)
+# --------------------------------------------------------------------------- #
+
+TOKEN_BUDGET_CONFIG = """\
+spec_version: "1.2"
+slice: retention
+purpose: english_capability_preservation
+is_tunisian_adaptation: false
+requires_tunisian_output: false
+schema:
+  file: configs/data/schema.yaml
+  required_fields: [id, messages, category, source, language]
+token_budget:
+  unit: tokens
+  metric: assistant_tokens
+  tokenizer: gemma
+  include_chat_template: true
+  count: [total_tokens, assistant_tokens]
+  anchor:
+    category: coding
+    target_examples: 5000
+  category_multipliers:
+    coding: 1.0
+    mathematics: 1.0
+    reasoning: 0.8
+    general_instruction: 0.6
+    knowledge_qa: 0.6
+  tolerance: 0.02
+  context_window_tokens: 16384
+  max_formatted_tokens_per_example: 15500
+  whole_examples_only: true
+  on_overlength: drop
+  holdout:
+    reserve_first: true
+    unit: tokens
+    target_tokens: 200
+    category_shares:
+      coding: 0.25
+      mathematics: 0.25
+      reasoning: 0.20
+      general_instruction: 0.15
+      knowledge_qa: 0.15
+    pack_with_training: false
+  packing:
+    strategy: first_fit_decreasing
+    sequence_length_tokens: 16384
+    attention_mask: block_diagonal
+    reset_position_ids_per_example: true
+    verify_gemma3_hybrid_attention: true
+    pad_only_final_partial_sequence: true
+target_examples: 20000
+categories:
+  mathematics: 5000
+  coding: 5000
+  reasoning: 4000
+  instruction_following: 3000
+  knowledge_qa: 3000
+category_aliases:
+  instruction_following: general_instruction
+language:
+  primary: english
+  allowed: [en]
+  allow_other_languages: false
+quality:
+  required_schema_valid: true
+  exclude_flagged: true
+  language_allowed: [en]
+  script_allowed: [latin]
+  require_unique_ids: true
+  dedupe_before_selection: true
+  min_messages_turns: 2
+  end_with_assistant: true
+holdout:
+  target_examples: 2500
+  stratified: true
+  output: data/processed/retention/holdout.jsonl
+output:
+  train: data/processed/retention/train.jsonl
+  holdout: data/processed/retention/holdout.jsonl
+  manifest: data/manifests/retention/selection.json
+selection:
+  seed: 42
+  stratify_by: category
+  stable_sort_by: id
+  max_share_per_source: 1.0
+  exclude_flagged: true
+  require_unique_ids: true
+  on_insufficient_candidates: error
+"""
+
+
+def _token_record(index: int, category: str, source: str = "synthetic_pool_a") -> Dict[str, Any]:
+    """Short English record (~2 assistant tokens via the approximate counter)."""
+    return {
+        "id": f"tok-{category}-{index:05d}",
+        "messages": [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "yo"},
+        ],
+        "category": category,
+        "source": source,
+        "language": "en",
+        "script": "latin",
+        "quality": {"synthetic": True},
+    }
+
+
+def _load_token_budget_spec(tmp_path: Path) -> RetentionSpec:
+    path = tmp_path / "retention_token_budget.yaml"
+    path.write_text(TOKEN_BUDGET_CONFIG, encoding="utf-8")
+    return retention.load_retention_spec(path)
+
+
+def _token_pool(per_category: int = 300) -> List[Dict[str, Any]]:
+    categories = ("coding", "mathematics", "reasoning", "general_instruction", "knowledge_qa")
+    records: List[Dict[str, Any]] = []
+    for category in categories:
+        for index in range(per_category):
+            records.append(_token_record(index, category))
+    return records
+
+
+class TestRetentionTokenBudget:
+    """Token-aware selection (docs/data/retention_mohamed.md Section 3)."""
+
+    def test_spec_loads_with_token_budget_metric(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        assert spec.token_budget_enabled is True
+        assert spec.token_budget_metric == "assistant_tokens"
+        assert spec.category_multipliers == {
+            "coding": 1.0,
+            "mathematics": 1.0,
+            "reasoning": 0.8,
+            "general_instruction": 0.6,
+            "knowledge_qa": 0.6,
+        }
+        assert spec.anchor_category == "coding"
+        assert spec.holdout_target_tokens == 200
+
+    def test_anchor_coding_count_and_t_code(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        scale = 0.01  # anchor = 5000 * 0.01 = 50 coding examples
+        selection = retention.select_retention_token_budget(pool, spec, scale=scale)
+        # 50 coding examples x ~1 assistant token = 50 = T_code
+        assert selection.train_counts["coding"] == 50
+        assert selection.anchor_tokens == 50
+
+    def test_categories_fill_to_multiplier_times_t_code(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        selection = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        t_code = selection.anchor_tokens  # 100 assistant tokens
+        expected = {
+            "mathematics": 1.0 * t_code,
+            "reasoning": 0.8 * t_code,
+            "general_instruction": 0.6 * t_code,
+            "knowledge_qa": 0.6 * t_code,
+        }
+        tolerance = spec.token_tolerance
+        for category, target in expected.items():
+            actual = selection.train_assistant_tokens[category]
+            lower = target * (1.0 - tolerance)
+            upper = target * (1.0 + tolerance)
+            assert lower <= actual <= upper, (
+                f"{category}: {actual} not in [{lower}, {upper}]"
+            )
+
+    def test_coding_train_matches_anchor(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        selection = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        # coding multiplier is 1.0, so its train mass equals T_code exactly
+        assert selection.train_assistant_tokens["coding"] == selection.anchor_tokens
+
+    def test_holdout_is_token_proportional_and_disjoint(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        selection = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        train_ids = {r["id"] for r in selection.train}
+        holdout_ids = {r["id"] for r in selection.holdout}
+        assert train_ids.isdisjoint(holdout_ids)
+        selection.assert_no_contamination()
+        # holdout shares: coding 0.25 * 200 = 50 assistant tokens, band [49, 51]
+        assert 49 <= selection.holdout_token_totals["coding"] <= 51
+        assert selection.holdout_counts["coding"] == selection.holdout_token_totals["coding"]
+
+    def test_selection_is_deterministic(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        first = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        second = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        assert [r["id"] for r in first.train] == [r["id"] for r in second.train]
+        assert [r["id"] for r in first.holdout] == [r["id"] for r in second.holdout]
+        assert first.anchor_tokens == second.anchor_tokens
+
+    def test_manifest_records_token_metrics(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        selection = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        manifest = selection.manifest(candidates=len(pool), sources=["synthetic_pool_a"])
+        tb = manifest["token_budget"]
+        assert tb["metric"] == "assistant_tokens"
+        assert tb["anchor_tokens"] == 50
+        for key in (
+            "train_token_targets",
+            "train_total_tokens",
+            "train_assistant_tokens",
+            "holdout_token_totals",
+        ):
+            assert key in tb
+        assert "mathematics" in tb["train_assistant_tokens"]
+
+    def test_over_length_records_are_dropped(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        pool = _token_pool(per_category=300)
+        # one grossly over-length coding record (assistant content ~70_000 chars)
+        pool.append(
+            _token_record(0, "coding", source="synthetic_pool_a") | {
+                "id": "tok-overlong-00000",
+                "messages": [
+                    {"role": "user", "content": "x"},
+                    {"role": "assistant", "content": "z" * 70_000},
+                ],
+            }
+        )
+        selection = retention.select_retention_token_budget(pool, spec, scale=0.01)
+        assert selection.rejected.get("over_length", 0) == 1
+        # anchor still fills 50 from the remaining short coding records
+        assert selection.train_counts["coding"] == 50
+
+    def test_insufficient_candidates_raises(self, tmp_path: Path) -> None:
+        spec = _load_token_budget_spec(tmp_path)
+        tiny = [_token_record(i, "mathematics") for i in range(3)]
+        with pytest.raises(retention.SelectionError, match="anchor"):
+            retention.select_retention_token_budget(tiny, spec, scale=0.01)
+
+
+# --------------------------------------------------------------------------- #
 # 4b. MSA specification (Task 1)
 # --------------------------------------------------------------------------- #
+
 
 
 class TestMSASpecification:

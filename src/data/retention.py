@@ -33,7 +33,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
 import yaml
 
@@ -51,13 +51,88 @@ __all__ = [
     "RetentionSpec",
     "RetentionSelection",
     "SelectionError",
+    "TokenCounter",
+    "ApproximateTokenCounter",
+    "TokenCount",
     "load_retention_spec",
     "select_retention",
+    "select_retention_token_budget",
     "main",
 ]
 
 #: Default retention specification.
 RETENTION_CONFIG_PATH: Path = REPO_ROOT / "configs" / "data" / "retention.yaml"
+
+#: Dependency-free chars-per-token approximation (matches src/data/stats.py).
+CHARS_PER_TOKEN: float = 4.0
+
+#: Holdout ratio of the total retention token budget when ``holdout.target_tokens``
+#: is not set (matches the legacy 2,500 / 20,000 = 12.5% example ratio).
+DEFAULT_HOLDOUT_RATIO: float = 0.125
+
+
+@dataclass(frozen=True)
+class TokenCount:
+    """Token counts for one formatted example.
+
+    Attributes:
+        total: every token the model reads (chat template included).
+        assistant: tokens in assistant turns only — the actual loss signal.
+    """
+
+    total: int
+    assistant: int
+
+
+@runtime_checkable
+class TokenCounter(Protocol):
+    """Count tokens in text or formatted messages.
+
+    Implementations swap between the dependency-free approximation and
+    Gemma's own tokenizer once it is available (gated model, not installed
+    locally).  Selection logic never depends on a concrete counter.
+    """
+
+    def count_text(self, text: str) -> int:
+        """Count tokens in raw text."""
+
+    def count_messages(
+        self, messages: Sequence[Dict[str, Any]]
+    ) -> TokenCount:
+        """Count tokens in a formatted conversation (total + assistant-only)."""
+
+
+class ApproximateTokenCounter:
+    """Dependency-free token counter: ``chars / CHARS_PER_TOKEN``.
+
+    Used until Gemma's tokenizer is available.  Swappable for a
+    :class:`GemmaTokenCounter` (using ``transformers.AutoTokenizer`` +
+    ``apply_chat_template``) without changing any selection logic.
+    """
+
+    def __init__(self, chars_per_token: float = CHARS_PER_TOKEN) -> None:
+        self.chars_per_token = chars_per_token
+
+    def count_text(self, text: str) -> int:
+        if not text:
+            return 0
+        return max(1, int(len(text) / self.chars_per_token))
+
+    def count_messages(
+        self, messages: Sequence[Dict[str, Any]]
+    ) -> TokenCount:
+        total = 0
+        assistant = 0
+        for turn in messages:
+            if not isinstance(turn, dict):
+                continue
+            content = str(turn.get("content", ""))
+            n = self.count_text(content)
+            total += n
+            total += 1  # role-marker overhead per turn
+            if turn.get("role") == "assistant":
+                assistant += n
+        return TokenCount(total=total, assistant=assistant)
 
 
 class SelectionError(Exception):
@@ -71,8 +146,16 @@ class SelectionError(Exception):
 
 @dataclass(frozen=True)
 class RetentionSpec:
-    """Typed view over ``configs/data/retention.yaml``."""
+    """Typed view over ``configs/data/retention.yaml``.
 
+    Supports two selection modes:
+
+    * ``legacy`` — exact per-category example counts (synthetic smoke tests).
+    * ``token_budget`` — fill each category to a measured token budget
+      anchored to the coding slice (production).
+    """
+
+    # --- legacy example-count fields ---------------------------------------
     target_examples: int
     categories: Dict[str, int]
     category_aliases: Dict[str, str]
@@ -90,6 +173,23 @@ class RetentionSpec:
     manifest_output: str
     purpose: str
     is_tunisian_adaptation: bool
+
+    # --- token-budget fields ----------------------------------------------
+    token_budget_enabled: bool
+    category_multipliers: Dict[str, float]
+    anchor_category: str
+    anchor_target_examples: int
+    token_tolerance: float
+    holdout_reserve_first: bool
+    holdout_unit: str
+    holdout_target_tokens: Optional[float]
+    holdout_category_shares: Dict[str, float]
+    context_window_tokens: int
+    max_formatted_tokens_per_example: int
+    tokenizer: str
+    include_chat_template: bool
+    token_count_metrics: Tuple[str, ...]
+    token_budget_metric: str
 
     def canonical_targets(self) -> Dict[str, int]:
         """Return targets keyed by CANONICAL category name.
@@ -138,6 +238,36 @@ class RetentionSpec:
                 f"holdout target_examples must be >= 0, got {self.holdout_examples}"
             )
 
+        # --- token-budget consistency -------------------------------------
+        if self.token_budget_enabled:
+            anchor = self.anchor_category
+            if anchor not in self.category_multipliers:
+                raise SelectionError(
+                    f"token_budget anchor category '{anchor}' is not in "
+                    f"category_multipliers: {sorted(self.category_multipliers)}"
+                )
+            unknown_mult = [
+                name
+                for name in self.category_multipliers
+                if name not in schema.categories
+            ]
+            if unknown_mult:
+                raise SelectionError(
+                    f"unknown token-budget categories (not in the canonical "
+                    f"schema): {', '.join(sorted(unknown_mult))}"
+                )
+            holdout_share_sum = sum(self.holdout_category_shares.values())
+            if abs(holdout_share_sum - 1.0) > 1e-6:
+                raise SelectionError(
+                    f"holdout category_shares sum to {holdout_share_sum:.6f}, "
+                    f"expected 1.0"
+                )
+            if self.token_budget_metric not in ("total_tokens", "assistant_tokens"):
+                raise SelectionError(
+                    f"token_budget.metric must be 'total_tokens' or "
+                    f"'assistant_tokens', got {self.token_budget_metric!r}"
+                )
+
 
 def load_retention_spec(path: Optional[Path | str] = None) -> RetentionSpec:
     """Load and validate the retention specification."""
@@ -157,6 +287,7 @@ def load_retention_spec(path: Optional[Path | str] = None) -> RetentionSpec:
     holdout = raw.get("holdout") or {}
     selection = raw.get("selection") or {}
     output = raw.get("output") or {}
+    token_budget = raw.get("token_budget") or {}
 
     spec = RetentionSpec(
         target_examples=int(raw.get("target_examples", 0)),
@@ -184,6 +315,48 @@ def load_retention_spec(path: Optional[Path | str] = None) -> RetentionSpec:
         ),
         purpose=str(raw.get("purpose", "english_capability_preservation")),
         is_tunisian_adaptation=bool(raw.get("is_tunisian_adaptation", False)),
+        # --- token-budget fields ------------------------------------------
+        token_budget_enabled=bool(token_budget.get("unit") == "tokens"),
+        category_multipliers={
+            str(k): float(v)
+            for k, v in (token_budget.get("category_multipliers") or {}).items()
+        },
+        anchor_category=str(
+            (token_budget.get("anchor") or {}).get("category", "coding")
+        ),
+        anchor_target_examples=int(
+            (token_budget.get("anchor") or {}).get("target_examples", 5000)
+        ),
+        token_tolerance=float(token_budget.get("tolerance", 0.02)),
+        holdout_reserve_first=bool(
+            (token_budget.get("holdout") or {}).get("reserve_first", True)
+        ),
+        holdout_unit=str((token_budget.get("holdout") or {}).get("unit", "tokens")),
+        holdout_target_tokens=(
+            (token_budget.get("holdout") or {}).get("target_tokens")
+        ),
+        holdout_category_shares={
+            str(k): float(v)
+            for k, v in (
+                (token_budget.get("holdout") or {}).get("category_shares") or {}
+            ).items()
+        },
+        context_window_tokens=int(
+            token_budget.get("context_window_tokens", 16384)
+        ),
+        max_formatted_tokens_per_example=int(
+            token_budget.get("max_formatted_tokens_per_example", 15500)
+        ),
+        tokenizer=str(token_budget.get("tokenizer", "gemma")),
+        include_chat_template=bool(
+            token_budget.get("include_chat_template", True)
+        ),
+        token_count_metrics=tuple(
+            token_budget.get("count", ["total_tokens", "assistant_tokens"])
+        ),
+        token_budget_metric=str(
+            token_budget.get("metric", "assistant_tokens")
+        ),
     )
     spec.validate()
     return spec
@@ -205,6 +378,14 @@ class RetentionSelection:
     rejected: Dict[str, int] = field(default_factory=dict)
     seed: int = 42
     scale: float = 1.0
+
+    # --- token-budget mode -------------------------------------------------
+    anchor_tokens: int = 0
+    token_metric: str = "assistant_tokens"
+    train_token_targets: Dict[str, float] = field(default_factory=dict)
+    train_total_tokens: Dict[str, int] = field(default_factory=dict)
+    train_assistant_tokens: Dict[str, int] = field(default_factory=dict)
+    holdout_token_totals: Dict[str, int] = field(default_factory=dict)
 
     @property
     def train_counts(self) -> Dict[str, int]:
@@ -229,7 +410,7 @@ class RetentionSelection:
 
     def manifest(self, *, candidates: int, sources: Sequence[str]) -> Dict[str, Any]:
         """Build the reproducibility manifest for this selection."""
-        return {
+        manifest = {
             "slice": "retention",
             "purpose": "english_capability_preservation",
             "note": (
@@ -255,6 +436,16 @@ class RetentionSelection:
             "sources": sorted(set(sources)),
             "deterministic": True,
         }
+        if self.token_metric:
+            manifest["token_budget"] = {
+                "metric": self.token_metric,
+                "anchor_tokens": self.anchor_tokens,
+                "train_token_targets": self.train_token_targets,
+                "train_total_tokens": self.train_total_tokens,
+                "train_assistant_tokens": self.train_assistant_tokens,
+                "holdout_token_totals": self.holdout_token_totals,
+            }
+        return manifest
 
 
 def _count_by_category(records: Sequence[Dict[str, Any]]) -> Dict[str, int]:
@@ -494,6 +685,298 @@ def select_retention(
     return selection
 
 
+def _record_key(record: Dict[str, Any]) -> str:
+    """Stable lookup key for a record's pre-computed token counts."""
+    record_id = record.get("id")
+    return record_id if isinstance(record_id, str) else repr(sorted(record.items()))
+
+
+def _budget_value(record: Dict[str, Any], counts: Dict[str, TokenCount], metric: str) -> int:
+    """Return the configured budget metric (total or assistant tokens) for a record."""
+    token_count = counts[_record_key(record)]
+    return token_count.assistant if metric == "assistant_tokens" else token_count.total
+
+
+def _fill_token_budget(
+    pool: Sequence[Dict[str, Any]],
+    target_tokens: float,
+    *,
+    tolerance: float,
+    metric: str,
+    counts: Dict[str, TokenCount],
+    seed: int,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """Greedily fill a token budget with whole examples in deterministic order.
+
+    Visits records in seed-stable order and keeps an example only while the
+    running total stays within the upper tolerance bound. Stops as soon as the
+    total enters the ``±tolerance`` band around ``target_tokens``. Whole
+    examples only — nothing is ever truncated.
+    """
+    if target_tokens <= 0:
+        return [], 0
+
+    ordered = sorted(pool, key=lambda record: stable_key(record, seed))
+    lower = target_tokens * (1.0 - tolerance)
+    upper = target_tokens * (1.0 + tolerance)
+
+    selected: List[Dict[str, Any]] = []
+    total = 0
+    for record in ordered:
+        if total >= lower:
+            break
+        value = _budget_value(record, counts, metric)
+        if value <= 0:
+            continue
+        if total + value <= upper:
+            selected.append(record)
+            total += value
+
+    return selected, total
+
+
+def _remove_ids(records: Sequence[Dict[str, Any]], ids: set[str]) -> List[Dict[str, Any]]:
+    """Return records whose string id is not in ``ids``."""
+    return [
+        record
+        for record in records
+        if not (isinstance(record.get("id"), str) and record["id"] in ids)
+    ]
+
+
+def select_retention_token_budget(
+    candidates: Sequence[Dict[str, Any]],
+    spec: Optional[RetentionSpec] = None,
+    *,
+    schema: Optional[Schema] = None,
+    scale: float = 1.0,
+    seed: Optional[int] = None,
+    counter: Optional[TokenCounter] = None,
+) -> RetentionSelection:
+    """Select the retention train set + holdout by token budget (production).
+
+    Implements docs/data/retention_mohamed.md Section 3:
+
+    * filter + dedupe + tokenize every candidate;
+    * drop whole examples over ``max_formatted_tokens_per_example``;
+    * select the coding anchor (``anchor_target_examples`` × scale) with source
+      diversity and measure its token mass ``T_code``;
+    * reserve a token-proportional holdout FIRST (never trained on);
+    * fill every other category to ``multiplier × T_code`` whole examples,
+      stopping inside the ``±tolerance`` band;
+    * fail loudly when a category cannot be filled.
+
+    The anchor category is ``coding`` (multiplier 1.0), so its train token mass
+    is exactly ``T_code``. Other categories use ``category_multipliers``
+    (reasoning 0.8, general_instruction 0.6, knowledge_qa 0.6).
+    """
+    spec = spec or load_retention_spec()
+    schema = schema or load_schema()
+    if not spec.token_budget_enabled:
+        raise SelectionError(
+            "token_budget mode requires retention.yaml token_budget.unit == 'tokens'"
+        )
+    spec.validate(schema)
+
+    effective_seed = spec.seed if seed is None else seed
+    counter = counter or ApproximateTokenCounter()
+    metric = spec.token_budget_metric
+    tolerance = spec.token_tolerance
+    max_len = spec.max_formatted_tokens_per_example
+
+    rejected: Dict[str, int] = {}
+
+    def reject(reason: str) -> None:
+        rejected[reason] = rejected.get(reason, 0) + 1
+
+    # --- filter ------------------------------------------------------------
+    eligible: List[Dict[str, Any]] = []
+    for index, record in enumerate(candidates):
+        if validate_record(record, schema, line=index + 1):
+            reject("schema_invalid")
+            continue
+        if spec.exclude_flagged and isinstance(record.get("quality"), dict):
+            if record["quality"].get("flagged") is True:
+                reject("quality_flagged")
+                continue
+        if not spec.allow_other_languages:
+            if record.get("language") not in spec.allowed_languages:
+                reject("language_not_allowed")
+                continue
+        if str(record.get("category")) not in spec.category_multipliers:
+            reject("category_not_requested")
+            continue
+        eligible.append(record)
+
+    if not eligible:
+        raise SelectionError(
+            "no eligible retention candidates after filtering "
+            f"(rejections: {rejected or 'none'}); categories requested: "
+            f"{sorted(spec.category_multipliers)}"
+        )
+
+    # --- deduplicate by id (first occurrence wins, deterministic) ----------
+    unique: List[Dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for record in eligible:
+        record_id = record.get("id")
+        if isinstance(record_id, str) and record_id in seen_ids:
+            reject("duplicate_id")
+            continue
+        if isinstance(record_id, str):
+            seen_ids.add(record_id)
+        unique.append(record)
+
+    # --- tokenize every candidate ------------------------------------------
+    counts: Dict[str, TokenCount] = {}
+    for record in unique:
+        counts[_record_key(record)] = counter.count_messages(
+            record.get("messages", [])
+        )
+
+    # --- drop over-length examples (whole examples only, never truncated) --
+    within_length: List[Dict[str, Any]] = []
+    for record in unique:
+        if counts[_record_key(record)].total <= max_len:
+            within_length.append(record)
+        else:
+            reject("over_length")
+
+    if not within_length:
+        raise SelectionError(
+            "no retention candidates within the formatted token limit "
+            f"({max_len} tokens)"
+        )
+
+    # --- anchor: coding (count-based, source-diverse) -> T_code ------------
+    anchor_category = spec.anchor_category
+    anchor_pool = [
+        record for record in within_length if str(record.get("category")) == anchor_category
+    ]
+    anchor_need = max(1, int(round(spec.anchor_target_examples * scale)))
+    if len(anchor_pool) < anchor_need and spec.on_insufficient_candidates == "error":
+        raise SelectionError(
+            f"anchor category '{anchor_category}': need {anchor_need} examples "
+            f"but only {len(anchor_pool)} candidate(s) available"
+        )
+    anchor_selected = _pick_with_source_diversity(
+        anchor_pool,
+        min(anchor_need, len(anchor_pool)),
+        seed=effective_seed,
+        max_share_per_source=spec.max_share_per_source,
+    )
+    anchor_ids = {
+        record["id"] for record in anchor_selected if isinstance(record.get("id"), str)
+    }
+    T_code = sum(_budget_value(record, counts, metric) for record in anchor_selected)
+
+    remaining = _remove_ids(within_length, anchor_ids)
+
+    # --- holdout first, token-proportional across categories ---------------
+    holdout_target_tokens = spec.holdout_target_tokens
+    if holdout_target_tokens is None:
+        holdout_target_tokens = DEFAULT_HOLDOUT_RATIO * T_code
+    holdout_target_tokens = float(holdout_target_tokens)
+
+    holdout_records: List[Dict[str, Any]] = []
+    holdout_token_totals: Dict[str, int] = {}
+    for category in sorted(spec.holdout_category_shares):
+        share = spec.holdout_category_shares[category]
+        category_target = holdout_target_tokens * share
+        category_pool = [
+            record
+            for record in remaining
+            if str(record.get("category")) == category
+        ]
+        selected, total = _fill_token_budget(
+            category_pool,
+            category_target,
+            tolerance=tolerance,
+            metric=metric,
+            counts=counts,
+            seed=effective_seed,
+        )
+        holdout_records.extend(selected)
+        holdout_token_totals[category] = total
+        if total < category_target * (1.0 - tolerance) and spec.on_insufficient_candidates == "error":
+            raise SelectionError(
+                f"holdout category '{category}': need {category_target:.0f} {metric} "
+                f"but could only reserve {total}"
+            )
+        selected_ids = {
+            record["id"] for record in selected if isinstance(record.get("id"), str)
+        }
+        remaining = _remove_ids(remaining, selected_ids)
+
+    # --- train selection: fill each category to multiplier × T_code --------
+    train_records: List[Dict[str, Any]] = list(anchor_selected)
+    train_token_targets: Dict[str, float] = {anchor_category: float(T_code)}
+    train_total_tokens: Dict[str, int] = {}
+    train_assistant_tokens: Dict[str, int] = {}
+
+    anchor_total = sum(counts[_record_key(r)].total for r in anchor_selected)
+    anchor_assistant = sum(counts[_record_key(r)].assistant for r in anchor_selected)
+    train_total_tokens[anchor_category] = anchor_total
+    train_assistant_tokens[anchor_category] = anchor_assistant
+
+    for category in sorted(spec.category_multipliers):
+        if category == anchor_category:
+            continue
+        target_tokens = spec.category_multipliers[category] * T_code
+        category_pool = [
+            record
+            for record in remaining
+            if str(record.get("category")) == category
+        ]
+        selected, total = _fill_token_budget(
+            category_pool,
+            target_tokens,
+            tolerance=tolerance,
+            metric=metric,
+            counts=counts,
+            seed=effective_seed,
+        )
+        train_records.extend(selected)
+        train_token_targets[category] = target_tokens
+        train_total_tokens[category] = sum(
+            counts[_record_key(r)].total for r in selected
+        )
+        train_assistant_tokens[category] = sum(
+            counts[_record_key(r)].assistant for r in selected
+        )
+        if total < target_tokens * (1.0 - tolerance) and spec.on_insufficient_candidates == "error":
+            raise SelectionError(
+                f"category '{category}': need {target_tokens:.0f} {metric} "
+                f"but could only select {total}"
+            )
+        selected_ids = {
+            record["id"] for record in selected if isinstance(record.get("id"), str)
+        }
+        remaining = _remove_ids(remaining, selected_ids)
+
+    train_records.sort(key=lambda record: str(record.get("id", "")))
+    holdout_records.sort(key=lambda record: str(record.get("id", "")))
+
+    selection = RetentionSelection(
+        train=train_records,
+        holdout=holdout_records,
+        train_targets={name: int(round(v)) for name, v in train_token_targets.items()},
+        holdout_targets={name: int(round(v)) for name, v in holdout_token_totals.items()},
+        rejected=dict(sorted(rejected.items())),
+        seed=effective_seed,
+        scale=scale,
+        anchor_tokens=T_code,
+        token_metric=metric,
+        train_token_targets=train_token_targets,
+        train_total_tokens=train_total_tokens,
+        train_assistant_tokens=train_assistant_tokens,
+        holdout_token_totals=holdout_token_totals,
+    )
+    selection.assert_no_contamination()
+
+    return selection
+
+
 def _holdout_share(targets: Dict[str, int], holdout_total: int) -> Dict[str, int]:
     """Apportion the holdout across categories in proportion to the targets."""
     if holdout_total <= 0:
@@ -541,15 +1024,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "exercise the pipeline on synthetic fixtures."
         ),
     )
+    parser.add_argument(
+        "--mode",
+        choices=["legacy", "token_budget"],
+        default="legacy",
+        help=(
+            "selection mode: 'legacy' fills exact per-category example counts "
+            "(synthetic smoke tests); 'token_budget' fills measured token budgets "
+            "anchored to the coding slice (production, docs/data/retention_mohamed.md "
+            "Section 3)."
+        ),
+    )
     parser.add_argument("--seed", type=int, default=None, help="override the seed")
     args = parser.parse_args(argv)
 
     try:
         spec = load_retention_spec(args.config)
         loaded = load_jsonl(args.candidates)
-        selection = select_retention(
-            loaded.records, spec, scale=args.scale, seed=args.seed
-        )
+        if args.mode == "token_budget":
+            selection = select_retention_token_budget(
+                loaded.records, spec, scale=args.scale, seed=args.seed
+            )
+        else:
+            selection = select_retention(
+                loaded.records, spec, scale=args.scale, seed=args.seed
+            )
     except (SelectionError, FileNotFoundError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -570,13 +1069,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    print(f"retention selection (scale={args.scale}, seed={selection.seed})")
+    print(f"retention selection (mode={args.mode}, scale={args.scale}, seed={selection.seed})")
     print(f"  train   : {len(selection.train):>6} -> {train_out}")
     print(f"            counts {selection.train_counts}")
     print(f"  holdout : {len(selection.holdout):>6} -> {holdout_out}")
     print(f"            counts {selection.holdout_counts}")
     if selection.rejected:
         print(f"  rejected: {selection.rejected}")
+    if getattr(selection, "token_metric", None):
+        print(
+            f"  token_budget: metric={selection.token_metric} "
+            f"anchor_tokens={selection.anchor_tokens}"
+        )
     print(f"  manifest: {manifest_out}")
     return 0
 
