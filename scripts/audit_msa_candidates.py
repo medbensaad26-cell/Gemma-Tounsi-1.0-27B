@@ -23,6 +23,7 @@ import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Any, Dict
 
 import pyarrow.parquet as pq
 
