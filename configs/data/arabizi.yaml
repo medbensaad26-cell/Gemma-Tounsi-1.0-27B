@@ -1,0 +1,139 @@
+# =============================================================================
+# configs/data/arabizi.yaml — Arabizi slice specification
+# =============================================================================
+#
+# PURPOSE
+#   The arabizi slice provides Latin-script Tunisian Arabic (Derja written with
+#   Latin letters/numerals) for Tunisian adaptation. It is part of the
+#   arabizi slice (0.35 of the training cocktail per configs/data/mixture.yaml).
+#
+#   It is *** NOT *** retention. It is *** NOT *** msa_formal.
+#
+#   Regular Arabizi is the anchor at 20% of the cocktail; Math-and-Coding-Arabizi
+#   is 15%. Under the anchoring rule:
+#     T_math_coding_arabizi = (0.15 ÷ 0.20) × T_regular_arabizi = 0.75 × T_regular_arabizi
+#
+#   Token-aware selection mirrors docs/data/retention_mohamed.md Section 3.
+#
+# DATASET-INDEPENDENT BY DESIGN
+#   No external dataset is named here. Candidate pools are supplied at run time
+#   as canonical JSONL; the selector reads THIS file for its targets.
+#
+# CONSUMED BY
+#   scripts/process_derja_arabizi.py
+# =============================================================================
+
+spec_version: "1.2"
+slice: arabizi
+
+# --- Purpose -----------------------------------------------------------------
+purpose: tunisian_adaptation
+is_tunisian_adaptation: true
+requires_tunisian_output: true
+
+# --- Required schema ---------------------------------------------------------
+schema:
+  file: configs/data/schema.yaml
+  docs: docs/DATA_SCHEMA.md
+  required_fields: [id, messages, category, source, language]
+  messages:
+    min_turns: 2
+    roles: [system, user, assistant]
+    last_role: assistant
+    non_empty_content: true
+
+# --- Production token budgets ------------------------------------------------
+# Anchor: Regular Arabizi (the reference slice at 20%). T_regular_arabizi is
+# measured from the anchor selection. Math-and-Coding-Arabizi targets 0.75 × T.
+token_budget:
+  unit: tokens
+  metric: assistant_tokens
+  fallback_metric: total_tokens
+  require_same_metric_for_all_categories: true
+  tokenizer: gemma
+  include_chat_template: true
+  count: [total_tokens, assistant_tokens]
+  anchor:
+    category: knowledge_qa   # Regular Arabizi anchor category (TUNIZI sentiment)
+    target_examples: null    # use all available anchor candidates
+  category_multipliers:
+    knowledge_qa: 1.0        # Regular Arabizi anchor = 1.0 × T_anchor
+    general_instruction: 1.0 # TArC supplement = 1.0 × T_anchor
+    mathematics: 0.75        # Math-and-Coding-Arabizi = 0.75 × T_anchor (not yet available)
+    reasoning: 0.75
+    coding: 0.75
+  tolerance: 0.02
+  context_window_tokens: 16384
+  max_formatted_tokens_per_example: 15500
+  whole_examples_only: true
+  on_overlength: drop
+  holdout:
+    reserve_first: true
+    unit: tokens
+    target_tokens: null     # set as ratio of T_anchor before production
+    category_shares:
+      knowledge_qa: 0.5
+      general_instruction: 0.5
+    pack_with_training: false
+  packing:
+    strategy: first_fit_decreasing
+    sequence_length_tokens: 16384
+    attention_mask: block_diagonal
+    reset_position_ids_per_example: true
+    verify_gemma3_hybrid_attention: true
+    pad_only_final_partial_sequence: true
+
+# --- Language ----------------------------------------------------------------
+language:
+  primary: arabizi
+  allowed: [arabizi]
+  allow_other_languages: false
+
+# --- Script ------------------------------------------------------------------
+script:
+  allowed: [latin]
+
+# --- Quality gate ------------------------------------------------------------
+quality:
+  required_schema_valid: true
+  exclude_flagged: true
+  language_allowed: [arabizi]
+  script_allowed: [latin]
+  require_unique_ids: true
+  dedupe_before_selection: true
+  min_messages_turns: 2
+  end_with_assistant: true
+
+# --- Holdout -----------------------------------------------------------------
+holdout:
+  target_examples: null
+  stratified: true
+  output: data/processed/arabizi/holdout.jsonl
+
+# --- Output ------------------------------------------------------------------
+output:
+  train: data/processed/arabizi/train.jsonl
+  holdout: data/processed/arabizi/holdout.jsonl
+  manifest: data/manifests/arabizi/selection.json
+
+# --- Selection behaviour -----------------------------------------------------
+selection:
+  seed: 42
+  stratify_by: source
+  stable_sort_by: id
+  max_share_per_source: 1.0
+  exclude_flagged: true
+  require_unique_ids: true
+  on_insufficient_candidates: error
+
+# --- Rules -------------------------------------------------------------------
+rules:
+  - "Required schema: every record must satisfy configs/data/schema.yaml."
+  - "Quality gate: records flagged by quality.flagged are never selected."
+  - "Tunisian adaptation: Arabizi is Latin-script Tunisian Arabic, NOT retention or msa_formal."
+  - "Latin script: every Arabizi record must use language 'arabizi' and script 'latin'."
+  - "Holdout is reserved first and is never part of the training file."
+  - "Selection is deterministic and reproducible from this file + the seed."
+  - "Tokens are the currency: T_math_coding_arabizi = 0.75 × T_regular_arabizi."
+  - "Whole examples only: any formatted example over ~15,500 Gemma tokens is dropped whole, never truncated."
+  - "Tokenize with Gemma's own tokenizer on the formatted example; record total AND assistant tokens."
