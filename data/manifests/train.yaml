@@ -8,10 +8,10 @@
 #   data (Derja in Arabic script + Arabizi), and how those sources are combined
 #   into data/train.jsonl.
 #
-# STATUS: SOURCES DECLARED, NOT YET ACQUIRED. Three candidate sources are
-#   declared with pinned revisions; nothing is downloaded. Preprocessing,
-#   mixture and output sections are still TODO. Nothing is downloaded from
-#   here; this manifest is the input contract for scripts/prepare_data.sh.
+# STATUS: SOURCES ACQUIRED AND PROCESSED. All candidate sources declared below
+#   have been downloaded into data/raw/, canonicalized, validated, deduplicated,
+#   and split into train/holdout. Processed output lives in data/processed/ and
+#   the combined training file is data/train.jsonl.
 #
 # HARD RULES
 #   - Every source must be declared here BEFORE it is used. Undeclared data
@@ -22,13 +22,27 @@
 #   - Replay/rehearsal data for general-capability preservation belongs in
 #     retention.yaml, not here.
 #
+# LICENSE NOTES
+#   - TArC (arbml/TArC): CC-BY-NC-SA-4.0 — non-commercial. Commercial model
+#     release requires excluding TArC or using it only for non-commercial eval.
+#   - linagora/Tunisian_Derja_Dataset: CC-BY-SA-4.0 — share-alike. May conflict
+#     with Apache-2.0 weight release; legal review required before production.
+#
 # TODO
 #   [x] Identify candidate Derja / Arabizi corpora and verify licensing.
 #   [x] Declare each source using the schema documented below.
+#   [x] Acquire all candidate sources into data/raw/ (see scripts/acquire_* and
+#       data/raw/*/_provenance.json).
 #   [ ] Decide mixture weights (NOT decided yet — see `mixture`).
 #   [ ] Define normalization rules for Arabic script and Arabizi.
-#   [ ] Define dedup + contamination checks against every eval set.
+#   [ ] Define dedup + contamination checks against every eval set (eval.yaml
+#       is a skeleton; contamination check blocked until eval sources defined).
+#   [ ] Acquire Math-and-Coding Arabizi/Derja data to meet the 20% cross-cutting
+#       technical quota (configs/data/mixture.yaml). Current Arabizi/Derja pools
+#       are 0% technical.
 #   [ ] Mirror all provenance decisions in docs/DATA.md.
+#   [ ] Run Soup preflight (validate/stats/dedup/doctor) on Arabizi and Derja
+#       pools (blocked: soup 0.73.3 only in pinned container).
 # =============================================================================
 
 version: 1
@@ -197,8 +211,54 @@ sources:
       conversion to canonical schema. PII scan pending. v1 (9,210 sentences)
       also exists on Zenodo/GitHub; v2 is the larger release.
 
+  - id: tarc-arabizi
+    type: hf_dataset
+    location: arbml/TArC
+    revision: 02519acd39681256467f5b023c641e8138bfb31d
+    script: arabizi
+    license: CC-BY-NC-SA-4.0
+    permitted_use: >-
+      CC BY-NC-SA 4.0 — share-alike with a non-commercial clause. Derivative
+      works must be released under the same license; commercial model release
+      is restricted. If commercial release is a requirement, TArC should be
+      excluded or used only for non-commercial evaluation.
+    attribution: >-
+      arbml — TArC: Tunisian Arabish Corpus —
+      https://huggingface.co/datasets/arbml/TArC
+    notes: >-
+      47,970+ Arabizi sentences across forum (755), social (3,162), blog (366),
+      and rap (514) genres. Multi-layer annotation: token classification
+      (arabizi/foreign/emotag), CODA transliteration, POS tagging. Metadata:
+      governorate, age range, gender (some rows incomplete). Acquired into
+      data/raw/arbml__TArC/. Used as high-quality annotated Arabizi supplement
+      to TUNIZI v2.
+
+  - id: linagora-tunisian-derja-dataset
+    type: hf_dataset
+    location: linagora/Tunisian_Derja_Dataset
+    revision: a6defa513c5a33d68be82a7baf6da4edd43866a5
+    script: derja_arabic
+    license: CC-BY-SA-4.0
+    permitted_use: >-
+      CC-BY-SA-4.0 — share-alike; LEGAL REVIEW REQUIRED before use in
+      production training if adapted weights are to be released under
+      Apache-2.0. Derivative works must be released under the same license.
+    attribution: >-
+      Wajdi Ghezaiel and Jean-Pierre Lorré (LINAGORA), 2025 —
+      https://huggingface.co/datasets/linagora/Tunisian_Derja_Dataset
+    notes: >-
+      ~2.23M raw rows across 14 sub-corpora (~332 MB). For Regular Derja
+      (Arabic script), the relevant sub-corpora are: Derja_tunsi (13,037),
+      HkayetErwi (946), MADAR_TunisianDialect (12,000), QADI_TunisianDialect
+      (8,879), Sentiment_Derja (22,890), TA_Segmentation (30,530), TSAC
+      (8,416), TuDiCOI (3,426), TunBERT (67,186), TunisianSentimentAnalysis
+      (23,786), Tweet_TN (39,637). Total ~230K Arabic-script rows. Excluded:
+      TunSwitchCodeSwitching (394,160), TunSwitchTunisiaOnly (380,546),
+      Tunisian_Dialectic_English_Derja (1,220,712) — code-switched/English,
+      belong to franco_tunisian allocation. A Unicode Arabic-script gate is
+      required since soup langdetect returns 'unknown' for Arabic-script rows.
+
 # EXCLUDED / QUARANTINED (not declared; see docs/DATA.md §2.1)
-#   linagora/Tunisian_Derja_Dataset    CC-BY-SA-4.0, duplicates linto subsets, legal review
 #   hamzabouajila/tunisian-derja-unified-raw-corpus   CC-BY-SA-4.0, re-upload of the above
 #   tunis-ai/MADAR-TUN                 CC-BY-NC-3.0 on card (paper says CC-BY-SA-4.0)
 #   chaymafourati/tunizi               license unknown, loader script only

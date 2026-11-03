@@ -1,0 +1,139 @@
+# =============================================================================
+# configs/data/arabic_derja.yaml — Arabic-script Derja slice specification
+# =============================================================================
+#
+# PURPOSE
+#   The arabic_derja slice provides Tunisian Derja written in Arabic script for
+#   Tunisian adaptation. It is part of the arabic_derja slice (0.25 of the
+#   training cocktail per configs/data/mixture.yaml).
+#
+#   It is *** NOT *** retention. It is *** NOT *** msa_formal.
+#
+#   Regular Derja is the anchor at 15% of the cocktail; Math-and-Coding-Derja is
+#   10%. Under the anchoring rule:
+#     T_math_coding_derja = (0.10 ÷ 0.15) × T_regular_derja ≈ 0.67 × T_regular_derja
+#
+#   Token-aware selection mirrors docs/data/retention_mohamed.md Section 3.
+#
+# DATASET-INDEPENDENT BY DESIGN
+#   No external dataset is named here. Candidate pools are supplied at run time
+#   as canonical JSONL; the selector reads THIS file for its targets.
+#
+# CONSUMED BY
+#   scripts/process_derja_arabizi.py
+# =============================================================================
+
+spec_version: "1.2"
+slice: arabic_derja
+
+# --- Purpose -----------------------------------------------------------------
+purpose: tunisian_adaptation
+is_tunisian_adaptation: true
+requires_tunisian_output: true
+
+# --- Required schema ---------------------------------------------------------
+schema:
+  file: configs/data/schema.yaml
+  docs: docs/DATA_SCHEMA.md
+  required_fields: [id, messages, category, source, language]
+  messages:
+    min_turns: 2
+    roles: [system, user, assistant]
+    last_role: assistant
+    non_empty_content: true
+
+# --- Production token budgets ------------------------------------------------
+# Anchor: Regular Derja (the reference slice at 15%). T_regular_derja is
+# measured from the anchor selection. Math-and-Coding-Derja targets ~0.67 × T.
+token_budget:
+  unit: tokens
+  metric: assistant_tokens
+  fallback_metric: total_tokens
+  require_same_metric_for_all_categories: true
+  tokenizer: gemma
+  include_chat_template: true
+  count: [total_tokens, assistant_tokens]
+  anchor:
+    category: general_instruction   # Regular Derja anchor category (linagora sub-corpora)
+    target_examples: null           # use all available anchor candidates
+  category_multipliers:
+    general_instruction: 1.0        # Regular Derja anchor = 1.0 × T_anchor
+    knowledge_qa: 1.0               # Sentiment supplement = 1.0 × T_anchor
+    mathematics: 0.67               # Math-and-Coding-Derja ≈ 0.67 × T_anchor (not yet available)
+    reasoning: 0.67
+    coding: 0.67
+  tolerance: 0.02
+  context_window_tokens: 16384
+  max_formatted_tokens_per_example: 15500
+  whole_examples_only: true
+  on_overlength: drop
+  holdout:
+    reserve_first: true
+    unit: tokens
+    target_tokens: null
+    category_shares:
+      general_instruction: 0.5
+      knowledge_qa: 0.5
+    pack_with_training: false
+  packing:
+    strategy: first_fit_decreasing
+    sequence_length_tokens: 16384
+    attention_mask: block_diagonal
+    reset_position_ids_per_example: true
+    verify_gemma3_hybrid_attention: true
+    pad_only_final_partial_sequence: true
+
+# --- Language ----------------------------------------------------------------
+language:
+  primary: ar
+  allowed: [ar]
+  allow_other_languages: false
+
+# --- Script ------------------------------------------------------------------
+script:
+  allowed: [arabic]
+
+# --- Quality gate ------------------------------------------------------------
+quality:
+  required_schema_valid: true
+  exclude_flagged: true
+  language_allowed: [ar]
+  script_allowed: [arabic]
+  require_unique_ids: true
+  dedupe_before_selection: true
+  min_messages_turns: 2
+  end_with_assistant: true
+
+# --- Holdout -----------------------------------------------------------------
+holdout:
+  target_examples: null
+  stratified: true
+  output: data/processed/arabic_derja/holdout.jsonl
+
+# --- Output ------------------------------------------------------------------
+output:
+  train: data/processed/arabic_derja/train.jsonl
+  holdout: data/processed/arabic_derja/holdout.jsonl
+  manifest: data/manifests/arabic_derja/selection.json
+
+# --- Selection behaviour -----------------------------------------------------
+selection:
+  seed: 42
+  stratify_by: source
+  stable_sort_by: id
+  max_share_per_source: 1.0
+  exclude_flagged: true
+  require_unique_ids: true
+  on_insufficient_candidates: error
+
+# --- Rules -------------------------------------------------------------------
+rules:
+  - "Required schema: every record must satisfy configs/data/schema.yaml."
+  - "Quality gate: records flagged by quality.flagged are never selected."
+  - "Tunisian adaptation: Arabic-script Derja is NOT retention or msa_formal."
+  - "Arabic script: every Derja record must use language 'ar' and script 'arabic'."
+  - "Holdout is reserved first and is never part of the training file."
+  - "Selection is deterministic and reproducible from this file + the seed."
+  - "Tokens are the currency: T_math_coding_derja ≈ 0.67 × T_regular_derja."
+  - "Whole examples only: any formatted example over ~15,500 Gemma tokens is dropped whole, never truncated."
+  - "Tokenize with Gemma's own tokenizer on the formatted example; record total AND assistant tokens."
