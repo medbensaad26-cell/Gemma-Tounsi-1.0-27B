@@ -104,7 +104,6 @@ class Schema:
     required_fields: Tuple[str, ...]
     optional_fields: Tuple[str, ...]
     categories: Tuple[str, ...]
-    technical_categories: Tuple[str, ...]
     languages: Tuple[str, ...]
     scripts: Tuple[str, ...]
     difficulties: Tuple[str, ...]
@@ -120,10 +119,6 @@ class Schema:
     def known_fields(self) -> Tuple[str, ...]:
         """Every field name the schema recognises (required + optional)."""
         return self.required_fields + self.optional_fields
-
-    def is_technical(self, category: str) -> bool:
-        """Return True if ``category`` counts toward the technical quota."""
-        return category in self.technical_categories
 
 
 def _require(mapping: Dict[str, Any], key: str, where: str) -> Any:
@@ -164,7 +159,6 @@ def load_schema(path: Optional[str] = None) -> Schema:
         required_fields=tuple(_require(record, "required_fields", "record")),
         optional_fields=tuple(record.get("optional_fields", ())),
         categories=tuple(_require(enums, "category", "enums")),
-        technical_categories=tuple(_require(enums, "technical_categories", "enums")),
         languages=tuple(_require(enums, "language", "enums")),
         scripts=tuple(enums.get("script", ())),
         difficulties=tuple(enums.get("difficulty", ())),

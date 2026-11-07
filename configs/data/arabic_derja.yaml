@@ -9,9 +9,10 @@
 #
 #   It is *** NOT *** retention. It is *** NOT *** msa_formal.
 #
-#   Regular Derja is the anchor at 15% of the cocktail; Math-and-Coding-Derja is
-#   10%. Under the anchoring rule:
-#     T_math_coding_derja = (0.10 ÷ 0.15) × T_regular_derja ≈ 0.67 × T_regular_derja
+#   The entire arabic_derja slice (0.25 of the cocktail) is now ordinary, natural
+#   Tunisian Derja content in Arabic script. The previous Math-and-Coding-Derja
+#   sub-allocation (10% of the cocktail) has been dropped and folded back into
+#   regular Derja. There is no technical quota within this slice.
 #
 #   Token-aware selection mirrors docs/data/retention_mohamed.md Section 3.
 #
@@ -44,7 +45,8 @@ schema:
 
 # --- Production token budgets ------------------------------------------------
 # Anchor: Regular Derja (the reference slice at 15%). T_regular_derja is
-# measured from the anchor selection. Math-and-Coding-Derja targets ~0.67 × T.
+# measured from the anchor selection. The entire slice is ordinary content —
+# there is no separate Math-and-Coding-Derja target.
 token_budget:
   unit: tokens
   metric: assistant_tokens
@@ -58,10 +60,7 @@ token_budget:
     target_examples: null           # use all available anchor candidates
   category_multipliers:
     general_instruction: 1.0        # Regular Derja anchor = 1.0 × T_anchor
-    knowledge_qa: 1.0               # Sentiment supplement = 1.0 × T_anchor
-    mathematics: 0.67               # Math-and-Coding-Derja ≈ 0.67 × T_anchor (not yet available)
-    reasoning: 0.67
-    coding: 0.67
+    knowledge_qa: 1.0               # Ordinary Derja supplement = 1.0 × T_anchor
   tolerance: 0.02
   context_window_tokens: 16384
   max_formatted_tokens_per_example: 15500
@@ -134,6 +133,6 @@ rules:
   - "Arabic script: every Derja record must use language 'ar' and script 'arabic'."
   - "Holdout is reserved first and is never part of the training file."
   - "Selection is deterministic and reproducible from this file + the seed."
-  - "Tokens are the currency: T_math_coding_derja ≈ 0.67 × T_regular_derja."
+  - "Tokens are the currency: the entire arabic_derja slice is ordinary Tunisian content; there is no technical quota."
   - "Whole examples only: any formatted example over ~15,500 Gemma tokens is dropped whole, never truncated."
   - "Tokenize with Gemma's own tokenizer on the formatted example; record total AND assistant tokens."

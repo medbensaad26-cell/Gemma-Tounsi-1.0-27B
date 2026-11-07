@@ -118,15 +118,13 @@ class TestSchemaValidation:
         ):
             assert expected in canonical_schema.slices
 
-    def test_all_technical_tags_are_valid_categories(
+    def test_all_category_tags_are_valid_categories(
         self, canonical_schema: schema.Schema
     ) -> None:
         for tag in ("mathematics", "reasoning", "coding"):
             assert tag in canonical_schema.categories
-            assert canonical_schema.is_technical(tag)
         for tag in ("general_instruction", "knowledge_qa"):
             assert tag in canonical_schema.categories
-            assert not canonical_schema.is_technical(tag)
 
     def test_empty_messages_rejected(self, canonical_schema: schema.Schema) -> None:
         errors = schema.validate_record(good_record(messages=[]), canonical_schema)
@@ -244,6 +242,15 @@ class TestMalformedAndDuplicates:
             report = validate.validate_file(RAW / name)
             assert report.ok, f"{name} should be valid:\n{report.summary()}"
 
+    def test_tunisian_fixtures_use_ordinary_categories(self) -> None:
+        """Arabizi and Derja fixtures contain only ordinary conversational content."""
+        for name in ("arabizi.jsonl", "arabic_derja.jsonl"):
+            result = stats.analyze_file(RAW / name)
+            assert set(result.by_category) <= {
+                "general_instruction",
+                "knowledge_qa",
+            }
+
 
 # --------------------------------------------------------------------------- #
 # 3. Statistics
@@ -259,9 +266,6 @@ class TestStatistics:
         assert result.malformed_records == 0
         assert result.duplicate_ids == 0
         assert set(result.by_category) == {
-            "mathematics",
-            "coding",
-            "reasoning",
             "general_instruction",
             "knowledge_qa",
         }
@@ -271,12 +275,6 @@ class TestStatistics:
         assert result.avg_messages == 2.0
         assert result.avg_chars > 0
         assert result.approx_total_tokens > 0
-
-    def test_technical_ratio_is_computed(self) -> None:
-        good = stats.analyze_file(RAW / "arabizi.jsonl")
-        low = stats.analyze_file(RAW / "arabizi_low_technical.jsonl")
-        assert good.technical_ratio == pytest.approx(0.60)
-        assert low.technical_ratio == pytest.approx(0.10)
 
     def test_malformed_records_are_counted_not_ignored(self) -> None:
         result = stats.analyze_file(RAW / "malformed.jsonl")
@@ -808,7 +806,7 @@ def load_slices() -> Dict[str, List[Dict[str, Any]]]:
 
 
 class TestMixtureValidation:
-    """The eight hard mixture constraints."""
+    """The hard mixture constraints (no technical quota)."""
 
     def test_official_cocktail_is_declared(self) -> None:
         spec = mixture.load_mixture_spec()
@@ -824,12 +822,6 @@ class TestMixtureValidation:
         spec = mixture.load_mixture_spec()
         assert sum(spec.slices.values()) == pytest.approx(1.0)
 
-    def test_cross_cutting_minimums_are_declared(self) -> None:
-        spec = mixture.load_mixture_spec()
-        assert spec.arabizi_technical_min == 0.20
-        assert spec.derja_technical_min == 0.20
-        assert spec.technical_categories == ("mathematics", "reasoning", "coding")
-
     def test_valid_mixture_passes(self) -> None:
         report = mixture.validate_mixture(load_slices())
         assert report.ok, report.errors
@@ -840,41 +832,6 @@ class TestMixtureValidation:
         report = mixture.validate_mixture(slices)
         assert not report.ok
         assert any("msa_formal" in error for error in report.errors)
-
-    def test_arabizi_technical_quota_is_enforced(self) -> None:
-        slices = load_slices()
-        slices["arabizi"] = schema.load_jsonl(RAW / "arabizi_low_technical.jsonl").records
-        report = mixture.validate_mixture(slices)
-        assert not report.ok
-        assert any(
-            "arabizi" in error and "technical ratio" in error for error in report.errors
-        )
-
-    def test_derja_technical_quota_is_enforced(self) -> None:
-        slices = load_slices()
-        low = [
-            dict(record, category="general_instruction")
-            for record in slices["arabic_derja"]
-        ]
-        slices["arabic_derja"] = low
-        report = mixture.validate_mixture(slices)
-        assert not report.ok
-        assert any(
-            "arabic_derja" in error and "technical ratio" in error
-            for error in report.errors
-        )
-
-    def test_arabizi_quota_passes_at_exactly_twenty_percent(self) -> None:
-        """The boundary case must pass: >= 20%, not > 20%."""
-        slices = load_slices()
-        records = [
-            dict(r, id=f"boundary-{i:04d}", category="mathematics" if i < 8 else "knowledge_qa")
-            for i, r in enumerate(slices["arabizi"][:40])
-        ]
-        slices["arabizi"] = records
-        report = mixture.validate_mixture(slices)
-        assert report.slices["arabizi"]["technical_ratio"] == pytest.approx(0.20)
-        assert report.ok, report.errors
 
     def test_msa_is_not_counted_as_retention(self) -> None:
         spec = mixture.load_mixture_spec()
@@ -927,12 +884,6 @@ class TestMixtureValidation:
         )
         with pytest.raises(mixture.MixtureError, match="sum to"):
             mixture.load_mixture_spec(bad)
-
-    def test_report_raises_on_failure(self) -> None:
-        slices = load_slices()
-        slices["arabizi"] = schema.load_jsonl(RAW / "arabizi_low_technical.jsonl").records
-        with pytest.raises(mixture.MixtureError, match="technical ratio"):
-            mixture.validate_mixture(slices).raise_if_invalid()
 
 
 # --------------------------------------------------------------------------- #
@@ -1124,6 +1075,7 @@ class TestGuardrails:
             (SYNTHETIC / "expected" / "summary.json").read_text(encoding="utf-8")
         )
         assert expected["counts"]["retention_pool.jsonl"] == 300
-        assert expected["technical_ratio"]["arabizi"] == 0.6
-        assert expected["technical_ratio"]["arabizi_low_technical"] == 0.1
+        assert expected["counts"]["arabizi.jsonl"] == 40
+        assert expected["counts"]["arabic_derja.jsonl"] == 40
+        assert "arabizi_low_technical.jsonl" not in expected["counts"]
         assert expected["duplicates"]["duplicate_ids"] == 1

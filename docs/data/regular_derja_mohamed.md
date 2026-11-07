@@ -1,8 +1,15 @@
 # Regular Derja Data Analysis: Arabic-Script Conversational Slice
 
+> **STATUS: SUPERSEDED.** This document describes the previous data strategy, which
+> allocated a Math-and-Coding-Derja sub-slice (10% of the cocktail, matched at
+> ~0.67 × T_regular_derja). That requirement has been permanently dropped. The
+> entire arabic_derja slice (0.25) is now ordinary, natural Tunisian Derja content.
+> See `docs/data/derja_and_arabizi_strategy.md` for the current strategy.
+> This document is retained for historical reference only.
+
 **Author:** Mohamed Bensaad  
 **Date:** October 18, 2026  
-**Status:** Complete  
+**Status:** Superseded (previous strategy)
 
 ## Executive Summary
 

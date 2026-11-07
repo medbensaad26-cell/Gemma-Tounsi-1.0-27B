@@ -1,8 +1,15 @@
 # Regular Arabizi Data Analysis: Latin-Script Conversational Slice
 
+> **STATUS: SUPERSEDED.** This document describes the previous data strategy, which
+> allocated a Math-and-Coding-Arabizi sub-slice (15% of the cocktail, matched at
+> 0.75 × T_regular_arabizi). That requirement has been permanently dropped. The
+> entire arabizi slice (0.35) is now ordinary, natural Tunisian Arabizi content.
+> See `docs/data/derja_and_arabizi_strategy.md` for the current strategy.
+> This document is retained for historical reference only.
+
 **Author:** Mohamed  
 **Date:** October 18, 2026  
-**Status:** Complete  
+**Status:** Superseded (previous strategy)
 
 ## Executive Summary
 

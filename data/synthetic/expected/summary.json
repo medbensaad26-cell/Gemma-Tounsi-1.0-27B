@@ -6,7 +6,6 @@
     "arabic_derja.jsonl": 40,
     "franco_tunisian.jsonl": 18,
     "msa_formal.jsonl": 18,
-    "arabizi_low_technical.jsonl": 20,
     "duplicates.jsonl": 4,
     "malformed.jsonl": 12
   },
@@ -21,11 +20,6 @@
     ],
     "language": "en",
     "purpose": "english_capability_preservation"
-  },
-  "technical_ratio": {
-    "arabizi": 0.6,
-    "arabic_derja": 0.6,
-    "arabizi_low_technical": 0.1
   },
   "malformed": {
     "total_lines": 12,
