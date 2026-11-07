@@ -97,9 +97,6 @@ with `assistant` teaches the model to answer before being asked. Both are errors
 | `general_instruction` | Open-ended instruction following, summarizing, rewriting, formatting |
 | `knowledge_qa` | Factual question answering, world/cultural knowledge |
 
-**Technical categories** — `mathematics`, `reasoning`, `coding` — are the three that
-count toward the cross-cutting quota in §5.
-
 > The retention configuration uses the label `instruction_following`; it maps to the
 > canonical `general_instruction` via `category_aliases` in
 > [`configs/data/retention.yaml`](../configs/data/retention.yaml). The canonical name
@@ -166,19 +163,6 @@ The mixture validator enforces both statements: retention must be declared
 `english_capability_preservation`, `msa_formal` must be
 `formal_register_coverage`, and non-English records in the retention slice are a
 hard failure.
-
----
-
-## 5. Cross-cutting technical quota
-
-At least **20%** of examples in **both** the `arabizi` and `arabic_derja` slices must
-be in a technical category (`mathematics`, `reasoning`, `coding`).
-
-The objective is *"make Gemma's existing capabilities work naturally in Tunisian."*
-A model that chats fluently in Derja but cannot do arithmetic in it has not met that
-objective. The quota is checked as `>=` (exactly 20.0% passes) and applies to the
-Tunisian slices only — `franco_tunisian`, `msa_formal` and `retention` have no
-technical minimum.
 
 ---
 
@@ -269,7 +253,7 @@ multi-turn conversations without loss.
 |---|---|
 | [`configs/data/schema.yaml`](../configs/data/schema.yaml) | Machine-readable schema (source of truth) |
 | [`configs/data/retention.yaml`](../configs/data/retention.yaml) | Retention targets & selection policy |
-| [`configs/data/mixture.yaml`](../configs/data/mixture.yaml) | Slice shares & cross-cutting quotas |
+| [`configs/data/mixture.yaml`](../configs/data/mixture.yaml) | Slice shares |
 | `src/data/schema.py` | Schema loading + per-record validation |
 | `src/data/validate.py` | File/dataset-level validation CLI |
 | `src/data/stats.py` | Dataset statistics |

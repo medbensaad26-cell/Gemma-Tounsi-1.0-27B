@@ -70,8 +70,6 @@ class DatasetStats:
     max_chars: int = 0
     approx_avg_tokens: float = 0.0
     approx_total_tokens: int = 0
-    technical_examples: int = 0
-    technical_ratio: float = 0.0
     code_switching_examples: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -92,8 +90,6 @@ class DatasetStats:
             "max_chars": self.max_chars,
             "approx_avg_tokens": round(self.approx_avg_tokens, 1),
             "approx_total_tokens": self.approx_total_tokens,
-            "technical_examples": self.technical_examples,
-            "technical_ratio": round(self.technical_ratio, 4),
             "code_switching_examples": self.code_switching_examples,
         }
 
@@ -108,8 +104,6 @@ class DatasetStats:
             f"  avg chars/example   : {self.avg_chars:.1f} (min {self.min_chars}, max {self.max_chars})",
             f"  approx tokens       : {self.approx_total_tokens} total, "
             f"{self.approx_avg_tokens:.1f} avg (~{CHARS_PER_TOKEN} chars/token)",
-            f"  technical examples  : {self.technical_examples} "
-            f"({self.technical_ratio * 100:.1f}%)",
             f"  code-switching      : {self.code_switching_examples}",
         ]
         for title, mapping in (
@@ -184,10 +178,6 @@ def compute_stats(
     stats.approx_total_tokens = int(total_chars / CHARS_PER_TOKEN)
     stats.approx_avg_tokens = stats.approx_total_tokens / len(good)
 
-    stats.technical_examples = sum(
-        1 for r in good if schema.is_technical(str(r.get("category")))
-    )
-    stats.technical_ratio = stats.technical_examples / len(good)
     stats.code_switching_examples = sum(1 for r in good if r.get("code_switching") is True)
 
     return stats

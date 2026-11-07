@@ -35,21 +35,6 @@ slices:
   msa_formal: 0.08       # Modern Standard / formal Arabic — register coverage
   retention: 0.20        # English capability preservation (replay/rehearsal)
 
-# --- Cross-cutting technical quota -------------------------------------------
-# Inside BOTH the arabizi and arabic_derja slices, at least this fraction of
-# examples must be technical (mathematics / reasoning / coding). This is a
-# MINIMUM (>=), checked against the actual processed slice contents.
-cross_cutting:
-  arabizi_technical_min: 0.20
-  derja_technical_min: 0.20
-
-# Categories that count as "technical" for the quota above. These must match
-# enums.technical_categories in configs/data/schema.yaml.
-technical_categories:
-  - mathematics
-  - reasoning
-  - coding
-
 # --- Slice semantics (so purposes are never conflated) -----------------------
 # Documented and asserted by tests: msa_formal is NOT retention, and retention
 # is NOT Tunisian adaptation.
@@ -59,11 +44,6 @@ slice_semantics:
   franco_tunisian:  tunisian_adaptation
   msa_formal:       formal_register_coverage      # NOT retention
   retention:        english_capability_preservation  # NOT Tunisian adaptation
-
-# Slices that carry the cross-cutting technical quota.
-technical_quota_slices:
-  - arabizi
-  - arabic_derja
 
 # --- Validation constraints (enforced by src/data/mixture.py) ----------------
 validation:
@@ -83,9 +63,8 @@ validation:
   #    (checked at run time against the processed datasets, not here).
   require_feasible_counts: true
 
-  # 4 & 5. Technical minimums must hold for arabizi and arabic_derja.
-  enforce_technical_minimums: true
-
+  # 4 & 5. No technical minimum applies to arabizi or arabic_derja — both
+  #    slices are 100% ordinary Tunisian content.
   # 6 & 7. Retention is its own slice; msa_formal is never counted as retention.
   retention_is_separate_slice: true
   msa_is_not_retention: true

@@ -73,13 +73,6 @@ enums:
     - general_instruction
     - knowledge_qa
 
-  # The three categories that count toward the cross-cutting technical quota
-  # inside the Arabizi and Arabic-script Derja slices.
-  technical_categories:
-    - mathematics
-    - reasoning
-    - coding
-
   # Primary language of the example. `language` is required.
   language:
     - arabizi        # Latin-script Tunisian Arabic (Derja written with Latin letters/numerals)

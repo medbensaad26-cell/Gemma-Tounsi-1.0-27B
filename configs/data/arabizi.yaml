@@ -9,9 +9,10 @@
 #
 #   It is *** NOT *** retention. It is *** NOT *** msa_formal.
 #
-#   Regular Arabizi is the anchor at 20% of the cocktail; Math-and-Coding-Arabizi
-#   is 15%. Under the anchoring rule:
-#     T_math_coding_arabizi = (0.15 ÷ 0.20) × T_regular_arabizi = 0.75 × T_regular_arabizi
+#   The entire arabizi slice (0.35 of the cocktail) is now ordinary, natural
+#   Tunisian Arabizi content. The previous Math-and-Coding-Arabizi sub-allocation
+#   (15% of the cocktail) has been dropped and folded back into regular Arabizi.
+#   There is no technical quota within this slice.
 #
 #   Token-aware selection mirrors docs/data/retention_mohamed.md Section 3.
 #
@@ -44,7 +45,8 @@ schema:
 
 # --- Production token budgets ------------------------------------------------
 # Anchor: Regular Arabizi (the reference slice at 20%). T_regular_arabizi is
-# measured from the anchor selection. Math-and-Coding-Arabizi targets 0.75 × T.
+# measured from the anchor selection. The entire slice is ordinary content —
+# there is no separate Math-and-Coding-Arabizi target.
 token_budget:
   unit: tokens
   metric: assistant_tokens
@@ -58,10 +60,7 @@ token_budget:
     target_examples: null    # use all available anchor candidates
   category_multipliers:
     knowledge_qa: 1.0        # Regular Arabizi anchor = 1.0 × T_anchor
-    general_instruction: 1.0 # TArC supplement = 1.0 × T_anchor
-    mathematics: 0.75        # Math-and-Coding-Arabizi = 0.75 × T_anchor (not yet available)
-    reasoning: 0.75
-    coding: 0.75
+    general_instruction: 1.0 # Ordinary Arabizi supplement = 1.0 × T_anchor
   tolerance: 0.02
   context_window_tokens: 16384
   max_formatted_tokens_per_example: 15500
@@ -134,6 +133,6 @@ rules:
   - "Latin script: every Arabizi record must use language 'arabizi' and script 'latin'."
   - "Holdout is reserved first and is never part of the training file."
   - "Selection is deterministic and reproducible from this file + the seed."
-  - "Tokens are the currency: T_math_coding_arabizi = 0.75 × T_regular_arabizi."
+  - "Tokens are the currency: the entire arabizi slice is ordinary Tunisian content; there is no technical quota."
   - "Whole examples only: any formatted example over ~15,500 Gemma tokens is dropped whole, never truncated."
   - "Tokenize with Gemma's own tokenizer on the formatted example; record total AND assistant tokens."

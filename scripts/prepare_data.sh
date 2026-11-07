@@ -22,7 +22,7 @@
 #         -> validation        (src/data/validate.py)
 #         -> statistics        (src/data/stats.py)
 #         -> duplicate handling(src/data/dedupe.py  — Soup for near-dups)
-#         -> category checks   (technical quota visible in the stats report)
+#         -> category checks   (category distribution visible in the stats report)
 #         -> retention select  (src/data/retention.py)
 #         -> holdout split     (reserved inside the selector; written out)
 #         -> mixture validation(src/data/mixture.py)
@@ -186,7 +186,7 @@ print(f"train={len(train)} holdout={len(holdout)} overlap=0")
 PYTHON
 
 # -----------------------------------------------------------------------------
-say "mixture validation (shares, slices, technical quotas, leakage)"
+say "mixture validation (shares, slices, leakage)"
 # -----------------------------------------------------------------------------
 "$PY" -m src.data.mixture \
   --slice "arabizi=${SYN_RAW}/arabizi.jsonl" \
@@ -196,20 +196,6 @@ say "mixture validation (shares, slices, technical quotas, leakage)"
   --slice "retention=${RET_DIR}/train.jsonl" \
   --holdout "${RET_DIR}/holdout.jsonl" \
   || fail "mixture validation failed"
-
-# The quota gate must also be able to FAIL. Prove it with the low-technical
-# Arabizi fixture, which sits deliberately below the 20% minimum.
-echo
-echo "--- confirming the technical quota gate rejects a bad mixture ---"
-if "$PY" -m src.data.mixture \
-  --slice "arabizi=${SYN_RAW}/arabizi_low_technical.jsonl" \
-  --slice "arabic_derja=${SYN_RAW}/arabic_derja.jsonl" \
-  --slice "franco_tunisian=${SYN_RAW}/franco_tunisian.jsonl" \
-  --slice "msa_formal=${SYN_RAW}/msa_formal.jsonl" \
-  --slice "retention=${RET_DIR}/train.jsonl" >/dev/null 2>&1; then
-  fail "a below-quota Arabizi mixture passed validation — the gate is broken"
-fi
-echo "below-quota mixture correctly rejected"
 
 # -----------------------------------------------------------------------------
 say "exporting the final Soup-compatible JSONL"

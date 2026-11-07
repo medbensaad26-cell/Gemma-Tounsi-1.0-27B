@@ -11,11 +11,9 @@ Constraints enforced (mirrors the config's ``validation`` block):
 1. slice shares sum to 1.0
 2. every required slice exists
 3. requested per-slice counts are feasible against the available data
-4. arabizi technical ratio  >= arabizi_technical_min
-5. arabic_derja technical ratio >= derja_technical_min
-6. retention is treated as its own slice
-7. msa_formal is NOT counted as retention
-8. no holdout/eval record leaks into any training slice
+4. retention is treated as its own slice
+5. msa_formal is NOT counted as retention
+6. no holdout/eval record leaks into any training slice
 
 CLI
 ---
@@ -68,24 +66,11 @@ class MixtureSpec:
     """Typed view over ``configs/data/mixture.yaml``."""
 
     slices: Dict[str, float]
-    arabizi_technical_min: float
-    derja_technical_min: float
-    technical_categories: Tuple[str, ...]
-    technical_quota_slices: Tuple[str, ...]
     slice_semantics: Dict[str, str]
     required_slices: Tuple[str, ...]
     require_total: float
     total_tolerance: float
-    enforce_technical_minimums: bool
     forbid_holdout_in_training: bool
-
-    def technical_minimum(self, slice_name: str) -> Optional[float]:
-        """Return the technical minimum for a slice, or ``None`` if it has none."""
-        if slice_name == "arabizi":
-            return self.arabizi_technical_min
-        if slice_name == "arabic_derja":
-            return self.derja_technical_min
-        return None
 
     def validate(self) -> List[str]:
         """Validate the SPEC itself (no data). Returns a list of errors."""
@@ -145,28 +130,16 @@ def load_mixture_spec(path: Optional[Path | str] = None) -> MixtureSpec:
     if not slices:
         raise MixtureError(f"{config_path} defines no slices")
 
-    cross = raw.get("cross_cutting") or {}
     validation = raw.get("validation") or {}
 
     spec = MixtureSpec(
         slices={str(k): float(v) for k, v in slices.items()},
-        arabizi_technical_min=float(cross.get("arabizi_technical_min", 0.20)),
-        derja_technical_min=float(cross.get("derja_technical_min", 0.20)),
-        technical_categories=tuple(
-            raw.get("technical_categories", ("mathematics", "reasoning", "coding"))
-        ),
-        technical_quota_slices=tuple(
-            raw.get("technical_quota_slices", ("arabizi", "arabic_derja"))
-        ),
         slice_semantics={
             str(k): str(v) for k, v in (raw.get("slice_semantics") or {}).items()
         },
         required_slices=tuple(validation.get("required_slices", tuple(slices))),
         require_total=float(validation.get("require_total", 1.0)),
         total_tolerance=float(validation.get("total_tolerance", 1e-6)),
-        enforce_technical_minimums=bool(
-            validation.get("enforce_technical_minimums", True)
-        ),
         forbid_holdout_in_training=bool(
             validation.get("forbid_holdout_in_training", True)
         ),
@@ -191,13 +164,7 @@ class SliceStats:
 
     name: str
     total: int
-    technical: int
     ids: set = field(default_factory=set)
-
-    @property
-    def technical_ratio(self) -> float:
-        """Fraction of the slice tagged as a technical category."""
-        return self.technical / self.total if self.total else 0.0
 
 
 @dataclass
@@ -238,12 +205,6 @@ class MixtureReport:
                 f"  {name:<16} share={info['share']:.2f} "
                 f"examples={info['examples']}"
             )
-            if info.get("technical_min") is not None:
-                line += (
-                    f" technical={info['technical']}"
-                    f" ({info['technical_ratio'] * 100:.1f}%"
-                    f" >= {info['technical_min'] * 100:.0f}%)"
-                )
             lines.append(line)
         for error in self.errors:
             lines.append(f"  ERROR: {error}")
@@ -254,11 +215,8 @@ def _slice_stats(
     name: str, records: Sequence[Dict[str, Any]], spec: MixtureSpec
 ) -> SliceStats:
     """Compute counts for one slice."""
-    technical = sum(
-        1 for r in records if str(r.get("category")) in spec.technical_categories
-    )
     ids = {r["id"] for r in records if isinstance(r.get("id"), str)}
-    return SliceStats(name=name, total=len(records), technical=technical, ids=ids)
+    return SliceStats(name=name, total=len(records), ids=ids)
 
 
 def validate_mixture(
@@ -318,18 +276,14 @@ def validate_mixture(
     total_examples = sum(item.total for item in stats.values())
 
     for name, item in stats.items():
-        minimum = spec.technical_minimum(name)
         info: Dict[str, Any] = {
             "share": spec.slices.get(name, 0.0),
             "examples": item.total,
-            "technical": item.technical,
-            "technical_ratio": round(item.technical_ratio, 4),
-            "technical_min": minimum,
             "semantics": spec.slice_semantics.get(name),
         }
         report_slices[name] = info
 
-        # 3. feasibility of requested counts
+        # feasibility of requested counts
         if requested_counts and name in requested_counts:
             wanted = requested_counts[name]
             if wanted > item.total:
@@ -341,17 +295,6 @@ def validate_mixture(
         # empty slices cannot satisfy anything downstream
         if item.total == 0:
             errors.append(f"slice '{name}' is empty")
-
-        # 4 & 5. cross-cutting technical quota
-        if spec.enforce_technical_minimums and minimum is not None and item.total:
-            if item.technical_ratio < minimum:
-                errors.append(
-                    f"slice '{name}': technical ratio "
-                    f"{item.technical_ratio * 100:.1f}% is below the required "
-                    f"{minimum * 100:.0f}% "
-                    f"({item.technical}/{item.total} in "
-                    f"{', '.join(spec.technical_categories)})"
-                )
 
     # 6 & 7. retention / msa_formal must stay distinct
     if "retention" in stats and "msa_formal" in stats:

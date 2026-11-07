@@ -16,11 +16,10 @@ reproduces byte-identical files.
 
 Outputs (all under data/synthetic/):
     raw/retention_pool.jsonl   English retention candidates, all 5 categories
-    raw/arabizi.jsonl          Arabizi slice, technical share ABOVE the 20% quota
-    raw/arabic_derja.jsonl     Arabic-script Derja, technical share ABOVE 20%
+    raw/arabizi.jsonl          Arabizi slice, ordinary conversational content
+    raw/arabic_derja.jsonl     Arabic-script Derja, ordinary conversational content
     raw/franco_tunisian.jsonl  French/Tunisian code-switching
     raw/msa_formal.jsonl       MSA / formal register (NOT retention)
-    raw/arabizi_low_technical.jsonl  Arabizi BELOW the quota — must FAIL validation
     raw/malformed.jsonl        broken records — must be caught, not silently dropped
     raw/duplicates.jsonl       repeated ids — must be caught by dedup/validation
     expected/summary.json      expected counts, so tests assert real numbers
@@ -38,7 +37,6 @@ RAW = HERE / "raw"
 EXPECTED = HERE / "expected"
 
 # Placeholder bodies. Short on purpose: this data tests plumbing, not modelling.
-TECHNICAL = ("mathematics", "reasoning", "coding")
 
 
 def record(
@@ -137,18 +135,6 @@ def build_retention_pool() -> List[Dict[str, Any]]:
 # --------------------------------------------------------------------------- #
 
 ARABIZI_BODIES = {
-    "mathematics": (
-        "3andi {n} dinar w zedt {m}, 9adech el majmou3?",
-        "El majmou3 howa {s} dinar. Zid {n} m3a {m} tji {s}.",
-    ),
-    "coding": (
-        "Kifech na3mel fonction f Python bech tarja3 element {n}?",
-        "Haw el code:\n```python\ndef jib(items):\n    return items[{n}]\n```",
-    ),
-    "reasoning": (
-        "Ken el 7keya {n} sa7i7a, chnowa el natija?",
-        "El natija: el 7keya {n} tebda sa7i7a, donc el conclusion sa7i7a zada.",
-    ),
     "general_instruction": (
         "3awenni n7ader lista fiha {n} points 3al mawdou3 hedha.",
         "Haw lista fiha {n} points 9sar 3al mawdou3.",
@@ -160,18 +146,6 @@ ARABIZI_BODIES = {
 }
 
 DERJA_BODIES = {
-    "mathematics": (
-        "عندي {n} دينار وزدت {m}، قداش المجموع؟",
-        "المجموع هو {s} دينار. زيد {n} مع {m} تجي {s}.",
-    ),
-    "coding": (
-        "كيفاش نعمل فونكسيون في پايثون ترجع العنصر {n}؟",
-        "هاو الكود:\n```python\ndef jib(items):\n    return items[{n}]\n```",
-    ),
-    "reasoning": (
-        "كان الحكاية {n} صحيحة، شنوة النتيجة؟",
-        "النتيجة: الحكاية {n} صحيحة، إذن الخلاصة صحيحة زادة.",
-    ),
     "general_instruction": (
         "عاوني نحضر ليستة فيها {n} نقاط على الموضوع هذا.",
         "هاو ليستة فيها {n} نقاط قصار على الموضوع.",
@@ -182,29 +156,11 @@ DERJA_BODIES = {
     ),
 }
 
-#: Category cycle giving a technical share of 3/5 = 60% — comfortably above the
-#: 20% cross-cutting minimum, so the quota check passes on the good fixtures.
+#: Category cycle for ordinary Tunisian content — general_instruction and
+#: knowledge_qa only. No mathematics, coding, or reasoning sub-allocation.
 GOOD_CYCLE = (
-    "mathematics",
-    "coding",
-    "reasoning",
     "general_instruction",
     "knowledge_qa",
-)
-
-#: Category cycle with a technical share of 1/10 = 10% — BELOW the minimum, used
-#: to prove the quota check actually fails when it should.
-LOW_CYCLE = (
-    "mathematics",
-    "general_instruction",
-    "knowledge_qa",
-    "general_instruction",
-    "knowledge_qa",
-    "general_instruction",
-    "knowledge_qa",
-    "general_instruction",
-    "knowledge_qa",
-    "general_instruction",
 )
 
 
@@ -498,15 +454,6 @@ def main() -> int:
         18,
         ("general_instruction", "knowledge_qa", "reasoning"),
     )
-    arabizi_low = build_tunisian_slice(
-        "syn-arabizi-low",
-        ARABIZI_BODIES,
-        "arabizi",
-        "latin",
-        "synthetic_arabizi_low",
-        20,
-        LOW_CYCLE,
-    )
     duplicates = build_duplicates()
     malformed_lines = build_malformed_lines()
 
@@ -516,9 +463,6 @@ def main() -> int:
         "arabic_derja.jsonl": write(RAW / "arabic_derja.jsonl", derja),
         "franco_tunisian.jsonl": write(RAW / "franco_tunisian.jsonl", franco),
         "msa_formal.jsonl": write(RAW / "msa_formal.jsonl", msa),
-        "arabizi_low_technical.jsonl": write(
-            RAW / "arabizi_low_technical.jsonl", arabizi_low
-        ),
         "duplicates.jsonl": write(RAW / "duplicates.jsonl", duplicates),
     }
 
@@ -527,11 +471,6 @@ def main() -> int:
         for line in malformed_lines:
             handle.write(line + "\n")
     counts["malformed.jsonl"] = len(malformed_lines)
-
-    def technical_share(rows: List[Dict[str, Any]]) -> float:
-        if not rows:
-            return 0.0
-        return sum(1 for r in rows if r["category"] in TECHNICAL) / len(rows)
 
     expected: Dict[str, Any] = {
         "warning": (
@@ -544,11 +483,6 @@ def main() -> int:
             "categories": sorted(RETENTION_BODIES),
             "language": "en",
             "purpose": "english_capability_preservation",
-        },
-        "technical_ratio": {
-            "arabizi": round(technical_share(arabizi), 4),
-            "arabic_derja": round(technical_share(derja), 4),
-            "arabizi_low_technical": round(technical_share(arabizi_low), 4),
         },
         "malformed": {
             "total_lines": len(malformed_lines),

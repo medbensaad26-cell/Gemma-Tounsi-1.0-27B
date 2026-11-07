@@ -64,7 +64,6 @@ Gemma Tounsi 1.0 treats capability preservation as a first-class design constrai
 
 - **QLoRA** (4-bit quantization + LoRA adapters) for parameter-efficient adaptation.
 - An **English retention slice** (20% of training tokens) replayed during training to protect general abilities.
-- A **20% technical quota** inside both Tunisian slices (math, reasoning, coding) so capabilities work *in* Tunisian, not just alongside it.
 - Three independent evaluation tracks — TounsiBench, Arabizi, Retention — reported separately, never collapsed into one headline number.
 - A **retention release gate**: any regression beyond the agreed threshold blocks publication.
 
@@ -81,10 +80,6 @@ The authoritative definition lives in `configs/data/mixture.yaml`. Shares are fr
 | `franco_tunisian` | 12% | French/Tunisian code-switching |
 | `msa_formal` | 8% | Formal MSA register (never counted as retention) |
 | `retention` | 20% | English capability preservation |
-
-### Cross-cutting technical quota
-
-At least **20%** of both the `arabizi` and `arabic_derja` slices must be technical examples covering mathematics, reasoning, and coding. The quota is checked against actual processed contents — `>=` boundary, exactly 20.0% passes.
 
 ### Retention budget (token-anchored)
 
@@ -262,7 +257,7 @@ Training outputs appear under `/workspace` (bind-mounted to the host) and are gi
 python -m pytest tests/ -v
 ```
 
-The suite runs entirely offline and covers schema validation, malformed/duplicate handling, statistics, retention selection, MSA specification, deterministic splitting, all eight mixture constraints, Soup interface compatibility, ShareGPT export, end-to-end pipeline reproducibility, and negative cases (malformed fixtures must be rejected; below-quota mixtures must fail).
+The suite runs entirely offline and covers schema validation, malformed/duplicate handling, statistics, retention selection, MSA specification, deterministic splitting, all mixture constraints, Soup interface compatibility, ShareGPT export, end-to-end pipeline reproducibility, and negative cases (malformed fixtures must be rejected).
 
 ---
 

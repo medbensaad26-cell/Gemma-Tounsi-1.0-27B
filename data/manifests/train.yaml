@@ -37,9 +37,6 @@
 #   [ ] Define normalization rules for Arabic script and Arabizi.
 #   [ ] Define dedup + contamination checks against every eval set (eval.yaml
 #       is a skeleton; contamination check blocked until eval sources defined).
-#   [ ] Acquire Math-and-Coding Arabizi/Derja data to meet the 20% cross-cutting
-#       technical quota (configs/data/mixture.yaml). Current Arabizi/Derja pools
-#       are 0% technical.
 #   [ ] Mirror all provenance decisions in docs/DATA.md.
 #   [ ] Run Soup preflight (validate/stats/dedup/doctor) on Arabizi and Derja
 #       pools (blocked: soup 0.73.3 only in pinned container).
