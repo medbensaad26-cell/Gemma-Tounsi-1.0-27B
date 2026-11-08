@@ -245,8 +245,12 @@ wandb-key*
 # --- Datasets (never committed) ----------------------------------------------
 data/raw/*
 !data/raw/.gitkeep
+data/raw/group_a/**/*
+!data/raw/group_a/**/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/processed/group_a/**/*
+!data/processed/group_a/**/.gitkeep
 data/splits/*
 !data/splits/.gitkeep
 data/train.jsonl

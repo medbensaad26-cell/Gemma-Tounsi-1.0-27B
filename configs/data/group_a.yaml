@@ -1,0 +1,95 @@
+# configs/data/group_a.yaml — Group A Tunisian Arabizi dataset sources
+# Licenses audited per docs/data/group_a_license_audit.md.
+#
+# Statuses:
+#   APPROVED      - explicitly licensed for open/commercial use
+#   CONDITIONAL   - needs additional verification before inclusion
+#   HOLD          - missing/unclear license, unresolved provenance
+#   REJECTED      - clearly incompatible (e.g. CC-BY-NC, CC-BY-NC-SA)
+
+datasets:
+  tunizi_bigbench:
+    source: "Nehdi/TuniziBigBench"
+    source_url: "https://huggingface.co/datasets/Nehdi/TuniziBigBench"
+    download_method: "huggingface_snapshot"
+    license: "CreativeML OpenRAIL-M"
+    license_status: "CONDITIONAL"  # OpenRAIL-M has use restrictions; review required
+    expected_rows: 1786867
+    file_size_mb: 182
+    priority: "VERY HIGH"
+
+  tunizi_v2:
+    source: "iCompass-ai/TUNIZI"
+    source_url: "https://github.com/iCompass-ai/TUNIZI"
+    zenodo_url: "https://zenodo.org/records/10578385"
+    download_method: "github_raw"
+    license: "MIT (repository), CC-BY-4.0 (Zenodo release)"
+    license_status: "CONDITIONAL"  # MIT on repo may not cover third-party text
+    expected_rows: 100000
+    file_size_mb: null
+    priority: "VERY HIGH"
+
+  tunizi_v1:
+    source: "iCompass-ai/TUNIZI"
+    source_url: "https://github.com/iCompass-ai/TUNIZI"
+    download_method: "github_raw"
+    license: "MIT (repository)"
+    license_status: "CONDITIONAL"
+    expected_rows: 9210
+    file_size_mb: 0.48
+    priority: "HIGH"
+
+  ctab:
+    source: "zenodo.org/records/4781769"
+    source_url: "https://zenodo.org/records/4781769"
+    download_method: "zenodo"
+    license: "CC-BY-4.0"
+    license_status: "APPROVED"  # CC-BY-4.0 permits commercial use with attribution
+    expected_rows: 2929
+    file_size_mb: null  # public record may only contain samples
+    priority: "HIGH"
+
+  tarc:
+    source: "eligugliotta/tarc"
+    source_url: "https://github.com/eligugliotta/tarc"
+    download_method: "github_raw"
+    license: "CC-BY-NC-SA-4.0"
+    license_status: "REJECTED"  # Non-commercial + ShareAlike — incompatible
+    expected_rows: null  # ~4797 sentences / ~43k tokens
+    file_size_mb: null
+    priority: "MEDIUM"
+
+  madar_tun:
+    source: "tunis-ai/MADAR-TUN"
+    source_url: "https://huggingface.co/datasets/tunis-ai/MADAR-TUN"
+    download_method: "huggingface_snapshot"
+    license: "CC-BY-NC-3.0"
+    license_status: "REJECTED"  # Non-commercial — incompatible
+    expected_rows: 30137
+    file_size_mb: 2.21
+    priority: "MEDIUM"
+
+  tunisian_dialect_corpus:
+    source: "arbml/Tunisian_Dialect_Corpus"
+    source_url: "https://huggingface.co/datasets/arbml/Tunisian_Dialect_Corpus"
+    download_method: "huggingface_snapshot"
+    license: "unclear"  # Not clearly established on HF card
+    license_status: "HOLD"  # License not clearly established
+    expected_rows: 49889
+    file_size_mb: null
+    priority: "HIGH subject to licensing verification"
+
+  tunisian_darija_english:
+    source: "Dhiadev-tn/tunisian-darija-english"
+    source_url: "https://huggingface.co/datasets/Dhiadev-tn/tunisian-darija-english"
+    download_method: "huggingface_snapshot"
+    license: "CC-BY-NC-SA-4.0"
+    license_status: "REJECTED"  # Non-commercial + ShareAlike — incompatible
+    expected_rows: 553
+    file_size_mb: 0.05
+    priority: "LOW"
+
+# Token budget
+target_gemma_tokens: 40000000
+tokenizer_model: "google/gemma-3-27b-it"
+tokenizer_metric: "assistant_tokens"  # raw text, no chat template
