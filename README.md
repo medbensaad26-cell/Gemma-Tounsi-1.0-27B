@@ -47,7 +47,7 @@ This repository owns the **data, evaluation, and release** side of the project: 
 | GPU validation and training | ⬜ Pending |
 | Data-engineering pipeline | ✅ End-to-end on synthetic fixtures |
 | Retention candidate corpora | ✅ Acquired, license-checked, pinned, validated, deduplicated |
-| Tunisian adaptation data | 🟨 Specs frozen; sourcing, adapters, authored data in progress |
+| Tunisian adaptation data | 🟨 Merged into `data/train.jsonl`; Arabizi slice severely under-filled (see `docs/data/arabizi_data_gap.md`) |
 | Training configuration | 🟨 Smoke-test placeholder; hyperparameters undecided |
 | Evaluation harnesses | ⬜ Track structure exists; benchmarks pending |
 | Model training and release | ⬜ Not started |
@@ -80,6 +80,8 @@ The authoritative definition lives in `configs/data/mixture.yaml`. Shares are fr
 | `franco_tunisian` | 12% | French/Tunisian code-switching |
 | `msa_formal` | 8% | Formal MSA register (never counted as retention) |
 | `retention` | 20% | English capability preservation |
+
+> **Arabizi data gap:** The `arabizi` slice is severely under-filled — current corpora provide ~2.7M assistant tokens against a ~40.5M target (6.6% coverage). All other slices are at or near their targets. See `docs/data/arabizi_data_gap.md` for the full diagnosis and the training decision.
 
 ### Retention budget (token-anchored)
 
@@ -285,12 +287,24 @@ Gemma-Tounsi-1.0-27B/
 │   ├── train.jsonl
 │   └── retention.jsonl
 ├── docs/
-│   ├── MODEL_CARD.md
 │   ├── DATA.md
 │   ├── DATA_SCHEMA.md
 │   ├── TRAINING.md
 │   ├── EVALUATION.md
-│   └── ENVIRONMENT.md
+│   ├── ENVIRONMENT.md
+│   └── data/
+│       ├── derja_and_arabizi_strategy.md
+│       ├── arabizi_data_gap.md
+│       ├── msa_audit.md
+│       ├── msa_soup_analysis.md
+│       ├── msa_mohamed.md
+│       ├── msa_candidate_datasets.md
+│       ├── franco_tunisian_soup_analysis.md
+│       ├── tunisian_code_switching.md
+│       ├── regular_arabizi_mohamed.md (SUPERSEDED)
+│       ├── regular_derja_mohamed.md (SUPERSEDED)
+│       ├── retention_mohamed.md
+│       └── retention_haithem.md
 ├── eval/
 │   ├── tounsibench/
 │   ├── arabizi/
