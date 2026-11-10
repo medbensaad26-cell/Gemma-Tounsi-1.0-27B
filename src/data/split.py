@@ -186,3 +186,61 @@ def stratified_split(
         train.extend(ordered[take:])
 
     return SplitResult(train=train, holdout=holdout)
+
+
+def group_stratified_split(
+    records: Sequence[Dict[str, Any]],
+    holdout_size: int,
+    *,
+    group_by: str = "variation_group",
+    seed: int = 42,
+) -> SplitResult:
+    """Split with the holdout apportioned across groups, not individual records.
+
+    Every record sharing the same ``group_by`` value (e.g. ``variation_group``
+    = passage SHA-256) is assigned entirely to either train or holdout. This
+    prevents passage-level contamination: if one passage's question lands in
+    holdout, no question from that same passage can appear in training.
+
+    Groups are apportioned to holdout proportionally to their record count
+    using the largest-remainder method, so the holdout mirrors the overall
+    group-size distribution.
+
+    Args:
+        records: records to split.
+        holdout_size: total holdout size (in records) across all groups.
+        group_by: field whose values define the groups (default
+            ``variation_group``).
+        seed: deterministic seed.
+
+    Raises:
+        ValueError: ``holdout_size`` is negative or exceeds ``len(records)``.
+    """
+    if holdout_size < 0:
+        raise ValueError(f"holdout_size must be >= 0, got {holdout_size}")
+    if holdout_size > len(records):
+        raise ValueError(
+            f"holdout_size {holdout_size} exceeds available records {len(records)}"
+        )
+
+    # Group records by their variation_group value.
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for record in records:
+        group_key = record.get(group_by)
+        if not isinstance(group_key, str) or not group_key:
+            group_key = "__no_group__"
+        groups.setdefault(group_key, []).append(record)
+
+    # Apportion holdout records across groups proportionally to group size.
+    sizes = {key: len(items) for key, items in groups.items()}
+    per_group_holdout = _largest_remainder(holdout_size, sizes)
+
+    train: List[Dict[str, Any]] = []
+    holdout: List[Dict[str, Any]] = []
+    for key in sorted(groups):
+        ordered = _ordered(groups[key], seed)
+        take = min(per_group_holdout.get(key, 0), len(ordered))
+        holdout.extend(ordered[:take])
+        train.extend(ordered[take:])
+
+    return SplitResult(train=train, holdout=holdout)

@@ -109,6 +109,10 @@ token_budget:
   # with the passage id recorded in `variation_group`. This is the MSA
   # equivalent of the retention strategy's per-template caps.
   max_examples_per_variation_group: 2
+  # Group key for the per-passage cap: the SHA-256 of the normalised passage
+  # text (recorded in the record's `variation_group` field by the normalisation
+  # adapter). CIDAR has an empty `input` field and is cap-exempt by construction.
+  variation_group: passage_sha256
   # Packing is a training-side concern, documented here so the whole recipe
   # lives in one file: biggest-first (first-fit decreasing) into 16k
   # sequences, block-diagonal attention masks, padding only on the final
@@ -180,9 +184,10 @@ selection:
   # No category stratification (see `categories: null` above); diversify by
   # source instead.
   # Source diversity: no single `source` may exceed this share of the slice.
-  # 1.0 disables the cap; it is intentionally loose here because the real
-  # candidate pools are not known yet. Tighten once real data is inspected.
-  max_share_per_source: 1.0
+  # 0.50 means no source may supply more than half the slice tokens; this keeps
+  # CIDAR dominant but leaves room for the three newly-acquired pools
+  # (Alpaca-Arabic-GPT4, Evol-Instruct-Arabic, Aya Arabic) once acquired.
+  max_share_per_source: 0.50
   # Records flagged by quality.flagged are never selected.
   exclude_flagged: true
   # Deduplicate by id before selecting (see src/data/dedupe.py).

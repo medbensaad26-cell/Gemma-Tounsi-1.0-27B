@@ -407,6 +407,48 @@ def validate_record(
                         "quality",
                     )
 
+    # --- Script-language consistency ---------------------------------------
+    # Soup's langdetect is Latin-script-centric and returns "unknown" for
+    # Arabic-script rows, so we enforce script/language consistency here with
+    # a Unicode-range check on the actual message content.
+    language = record.get("language")
+    script = record.get("script")
+    messages = record.get("messages")
+    if isinstance(language, str) and isinstance(script, str) and isinstance(messages, list):
+        # Gather all message text for script analysis.
+        all_text = " ".join(
+            str(turn.get("content", ""))
+            for turn in messages
+            if isinstance(turn, dict)
+        )
+        has_arabic = bool(re.search(r"[\u0600-\u06FF]", all_text))
+        has_latin = bool(re.search(r"[A-Za-z]", all_text))
+
+        if language == "ar" and script != "arabic":
+            err(
+                "language_script_mismatch",
+                f"language 'ar' requires script 'arabic', got script '{script}'",
+                "language",
+            )
+        if language == "arabizi" and script != "latin":
+            err(
+                "language_script_mismatch",
+                f"language 'arabizi' requires script 'latin', got script '{script}'",
+                "language",
+            )
+        if script == "arabic" and not has_arabic:
+            err(
+                "script_content_mismatch",
+                "script 'arabic' requires Arabic-script characters in message content",
+                "script",
+            )
+        if script == "latin" and has_arabic and not has_latin:
+            err(
+                "script_content_mismatch",
+                "script 'latin' requires Latin-script content; Arabic-script characters found without Latin",
+                "script",
+            )
+
     # --- unknown fields ----------------------------------------------------
     for name in record:
         if name not in schema.known_fields:

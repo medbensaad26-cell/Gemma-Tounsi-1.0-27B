@@ -22,10 +22,11 @@ Nothing here downloads a dataset or trains anything.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess  # noqa: S404 - used to invoke the pinned Soup CLI, never shell=True
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dc_field
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -36,6 +37,7 @@ __all__ = [
     "build_soup_dedup_command",
     "dedupe_by_id",
     "run_soup_dedup",
+    "record_dedup_decision",
     "main",
 ]
 
@@ -103,7 +105,7 @@ def build_soup_dedup_command(
     output_path: Optional[Path | str] = None,
     *,
     threshold: float = 0.8,
-    field: Optional[str] = None,
+    field: str = "messages",
     semantic: bool = False,
     soup_executable: str = "soup",
 ) -> SoupDedupCommand:
@@ -119,8 +121,10 @@ def build_soup_dedup_command(
             ``<input>_deduped.jsonl`` convention when omitted.
         threshold: similarity threshold in [0, 1] (MinHash Jaccard by default,
             embedding cosine under ``semantic``).
-        field: single field to hash/embed; ``None`` uses Soup's default of all
-            text fields concatenated.
+        field: single field to hash/embed. Defaults to ``"messages"`` — the
+            canonical trained-content field. Constant metadata columns
+            (``source``, ``language``) must NOT be included, as they suppress
+            duplicate detections (see docs/data/msa_audit.md §3.1).
         semantic: use embedding cosine (SemDeDup) instead of MinHash.
         soup_executable: the Soup entry point (overridable for tests).
 
@@ -144,9 +148,9 @@ def build_soup_dedup_command(
         str(output_path),
         "--threshold",
         str(threshold),
+        "--field",
+        field,
     ]
-    if field:
-        argv += ["--field", field]
     if semantic:
         argv.append("--semantic")
 
@@ -186,6 +190,55 @@ def run_soup_dedup(
 
     completed = subprocess.run(command.argv, check=check)  # noqa: S603
     return completed.returncode
+
+
+def record_dedup_decision(
+    manifest_path: Path | str,
+    *,
+    input_path: str,
+    output_path: str,
+    field: str,
+    threshold: float,
+    semantic: bool,
+    input_records: int,
+    output_records: int,
+    removed: int,
+    removed_by_field: Optional[str] = None,
+) -> None:
+    """Append a dedup decision record to a JSONL manifest.
+
+    Records the field set, threshold, and counts so that every near-duplicate
+    count is reproducible (see docs/data/msa_audit.md §3.1: "A near-duplicate
+    count without its field set is not a reproducible measurement").
+
+    Args:
+        manifest_path: JSONL manifest to append to.
+        input_path: input dataset path.
+        output_path: deduplicated output path.
+        field: field used for dedup (e.g. ``"messages"``).
+        threshold: similarity threshold used.
+        semantic: whether SemDeDup embedding cosine was used.
+        input_records: number of records before dedup.
+        output_records: number of records after dedup.
+        removed: number of records removed.
+        removed_by_field: optional field name whose removal drove the count
+            (e.g. when constant metadata columns suppressed detections).
+    """
+    manifest_path = Path(manifest_path)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "input_path": str(input_path),
+        "output_path": str(output_path),
+        "field": field,
+        "threshold": threshold,
+        "semantic": semantic,
+        "input_records": input_records,
+        "output_records": output_records,
+        "removed": removed,
+        "removed_by_field": removed_by_field,
+    }
+    with manifest_path.open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
