@@ -2,7 +2,9 @@ import json
 import os
 from transformers import AutoTokenizer
 
-os.environ['HF_TOKEN'] = '[REDACTED_HF_TOKEN]'
+HF_TOKEN = os.getenv("HF_TOKEN")
+if not HF_TOKEN:
+    raise RuntimeError("HF_TOKEN environment variable is missing")
 
 tok = AutoTokenizer.from_pretrained('google/gemma-3-27b-it', trust_remote_code=False)
 

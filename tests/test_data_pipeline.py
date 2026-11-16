@@ -1079,3 +1079,189 @@ class TestGuardrails:
         assert expected["counts"]["arabic_derja.jsonl"] == 40
         assert "arabizi_low_technical.jsonl" not in expected["counts"]
         assert expected["duplicates"]["duplicate_ids"] == 1
+
+
+# --------------------------------------------------------------------------- #
+# Gemma 3 EOT (end-of-turn) loss-mask verification
+# --------------------------------------------------------------------------- #
+
+GEMMA3_EOT_TOKEN_ID = 106
+GEMMA3_EOS_TOKEN_ID = 1
+GEMMA3_BOS_TOKEN_ID = 2
+
+
+def _load_gemma3_tokenizer():
+    """Load the Gemma 3 tokenizer, skipping if network/HF access unavailable."""
+    try:
+        import os
+        from transformers import AutoTokenizer
+        if not os.getenv("HF_TOKEN"):
+            pytest.skip("HF_TOKEN not set — cannot load Gemma 3 tokenizer")
+        return AutoTokenizer.from_pretrained(
+            "google/gemma-3-27b-it", trust_remote_code=False
+        )
+    except Exception:
+        pytest.skip("Gemma 3 tokenizer not available — requires network + HF access")
+
+
+class TestGemma3EOTMasking:
+    """Verify that assistant <end_of_turn> tokens are trained while user
+    <end_of_turn> tokens remain masked, for Gemma 3's chat template.
+
+    Gemma 3 uses <end_of_turn> (token 106) as the turn terminator, NOT
+    <eos> (token 1). Soup's train_on_eot looks for eos_token_id (1), so it is
+    a no-op for Gemma 3. However, the incremental-delta fallback path (used
+    because Gemma 3's template lacks {% generation %} markers) already
+    includes assistant <end_of_turn> within the trained assistant span.
+    """
+
+    @pytest.fixture
+    def tokenizer(self):
+        return _load_gemma3_tokenizer()
+
+    @pytest.fixture
+    def max_length(self):
+        return 8192
+
+    def test_token_ids(self, tokenizer):
+        """Verify Gemma 3 special token IDs."""
+        assert tokenizer.eos_token_id == GEMMA3_EOS_TOKEN_ID
+        assert tokenizer.bos_token_id == GEMMA3_BOS_TOKEN_ID
+        eot_ids = tokenizer.encode("<end_of_turn>", add_special_tokens=False)
+        assert eot_ids == [GEMMA3_EOT_TOKEN_ID], f"<end_of_turn>={eot_ids}"
+        assert "{ % generation % }" not in tokenizer.chat_template.replace(
+            " ", ""
+        ), "Gemma 3 template should lack {% generation %} markers"
+
+    def _build_labels(self, tokenizer, messages, max_length, include_eot=True):
+        from soup_cli.data.loss_mask import build_assistant_only_labels, IGNORE_INDEX
+        return build_assistant_only_labels(
+            messages, tokenizer, max_length=max_length, include_eot=include_eot
+        )
+
+    def _trained_spans(self, labels):
+        """Return [(start, end), ...] inclusive runs of non-IGNORE_INDEX labels."""
+        IGNORE_INDEX = -100
+        spans = []
+        start = None
+        for i, label in enumerate(labels):
+            if label != IGNORE_INDEX:
+                if start is None:
+                    start = i
+            elif start is not None:
+                spans.append((start, i - 1))
+                start = None
+        if start is not None:
+            spans.append((start, len(labels) - 1))
+        return spans
+
+    def test_single_turn_assistant_eot_trained(self, tokenizer, max_length):
+        """Assistant <end_of_turn>(106) must be in the trained span."""
+        messages = [
+            {"role": "user", "content": "What is the capital of France?"},
+            {"role": "assistant", "content": "Paris"},
+        ]
+        built = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        labels = built["labels"]
+        input_ids = built["input_ids"]
+
+        spans = self._trained_spans(labels)
+        assert len(spans) == 1, f"Expected 1 trained span, got {spans}"
+        s, e = spans[0]
+        assert GEMMA3_EOT_TOKEN_ID in input_ids[s : e + 1], (
+            f"Assistant <end_of_turn>(106) not in trained span {spans}"
+        )
+        # Assistant content tokens are trained
+        assert labels[s] != -100
+
+    def test_single_turn_user_eot_masked(self, tokenizer, max_length):
+        """User <end_of_turn>(106) must be masked (IGNORE_INDEX)."""
+        messages = [
+            {"role": "user", "content": "What is 2+2?"},
+            {"role": "assistant", "content": "4"},
+        ]
+        built = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        labels = built["labels"]
+        input_ids = built["input_ids"]
+
+        # Find user EOT position (106 before assistant start)
+        # All user positions (before assistant span) should be masked
+        spans = self._trained_spans(labels)
+        first_assistant_start = spans[0][0]
+        for i in range(first_assistant_start):
+            assert labels[i] == -100, f"User position {i} (token {input_ids[i]}) is trained"
+        # User EOT (106) appears before assistant span and is masked
+        assert any(input_ids[i] == GEMMA3_EOT_TOKEN_ID for i in range(first_assistant_start))
+
+    def test_multi_turn_all_assistant_eots_trained(self, tokenizer, max_length):
+        """Every assistant <end_of_turn>(106) must be trained in multi-turn."""
+        messages = [
+            {"role": "user", "content": "What is 2+2?"},
+            {"role": "assistant", "content": "4"},
+            {"role": "user", "content": "What is 3+3?"},
+            {"role": "assistant", "content": "6"},
+        ]
+        built = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        labels = built["labels"]
+        input_ids = built["input_ids"]
+
+        spans = self._trained_spans(labels)
+        assert len(spans) == 2, f"Expected 2 trained spans, got {spans}"
+        for s, e in spans:
+            assert GEMMA3_EOT_TOKEN_ID in input_ids[s : e + 1], (
+                f"Assistant <end_of_turn>(106) missing from span ({s},{e})"
+            )
+
+    def test_system_message_masked(self, tokenizer, max_length):
+        """System message tokens must be masked."""
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there!"},
+        ]
+        built = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        labels = built["labels"]
+        input_ids = built["input_ids"]
+
+        spans = self._trained_spans(labels)
+        assert len(spans) == 1
+        s, _ = spans[0]
+        # Everything before the assistant span is masked (system + user)
+        for i in range(s):
+            assert labels[i] == -100, f"Position {i} (token {input_ids[i]}) is trained"
+
+    def test_train_on_eot_is_noop_for_gemma3(self, tokenizer, max_length):
+        """train_on_eot=True vs False produces identical labels for Gemma 3,
+        since it looks for eos_token_id (1) not <end_of_turn> (106)."""
+        messages = [
+            {"role": "user", "content": "What is 2+2?"},
+            {"role": "assistant", "content": "4"},
+        ]
+        built_true = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        built_false = self._build_labels(tokenizer, messages, max_length, include_eot=False)
+        assert built_true["labels"] == built_false["labels"], (
+            "train_on_eot should be a no-op for Gemma 3 (looks for token 1, not 106)"
+        )
+
+    def test_no_eos_token_id_in_trained_spans(self, tokenizer, max_length):
+        """Trained spans contain <end_of_turn>(106), not <eos>(1).
+        This confirms the data doctor's eos_in_labels MAJOR is a false
+        positive for Gemma 3 — it looks for the wrong token ID."""
+        messages = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi!"},
+        ]
+        built = self._build_labels(tokenizer, messages, max_length, include_eot=True)
+        labels = built["labels"]
+        input_ids = built["input_ids"]
+
+        spans = self._trained_spans(labels)
+        for s, e in spans:
+            span_ids = input_ids[s : e + 1]
+            assert GEMMA3_EOS_TOKEN_ID not in span_ids, (
+                f"<eos>(1) found in trained span ({s},{e}) — unexpected"
+            )
+            assert GEMMA3_EOT_TOKEN_ID in span_ids, (
+                f"<end_of_turn>(106) missing from trained span ({s},{e})"
+            )
+
