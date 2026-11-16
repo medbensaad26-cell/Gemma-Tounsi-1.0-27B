@@ -41,7 +41,8 @@ backend: transformers
 # scripts/prepare_data.sh; no dataset is downloaded by this repository.
 # The real mixture is defined in data/manifests/train.yaml.
 data:
-  train: ./data/train.jsonl
+  train: ./data/splits/train.jsonl
+  val: ./data/splits/validation.jsonl
   format: alpaca      # DataConfig.format — placeholder; real format TBD.
   val_split: 0.1      # schema default, restated for clarity.
   max_length: 1024    # SMOKE-TEST value only, not a sequence-length decision.
