@@ -1,18 +1,6 @@
 # =============================================================================
-# soup.yaml — SMOKE-TEST CONFIGURATION ONLY
+# soup.yaml — Gemma Tounsi 1.0 (27B) SFT / QLoRA training configuration
 # =============================================================================
-#
-# ############################################################################
-# #  THIS IS NOT THE GEMMA TOUNSI 1.0 TRAINING RECIPE.                       #
-# #  It is a minimal PLACEHOLDER whose only job is to prove that the         #
-# #  Docker + Soup + CUDA path works and that a QLoRA/SFT config for         #
-# #  Gemma 3 27B is ACCEPTED by Soup's schema.                               #
-# #                                                                          #
-# #  Every hyperparameter below is a placeholder, NOT a decision:            #
-# #  LoRA rank/alpha/dropout, learning rate, epochs, batch size, gradient    #
-# #  accumulation, sequence length and mixture ratios are all still          #
-# #  DELIBERATELY UNDECIDED. Do not read any of them as a recipe.            #
-# ############################################################################
 #
 # Validated against: soup-cli 0.73.3
 #   schema source of truth: src/soup_cli/config/schema.py @ v0.73.3
@@ -36,46 +24,56 @@ task: sft
 # the baseline must be proven on the plain path first.
 backend: transformers
 
+# SoupConfig.modality — text SFT.
+modality: text
+
 # --- Data --------------------------------------------------------------------
-# PLACEHOLDER INPUT. data/train.jsonl does not exist yet and is produced by
-# scripts/prepare_data.sh; no dataset is downloaded by this repository.
-# The real mixture is defined in data/manifests/train.yaml.
+# Combined train+validation file (90% train + 5% val, no shuffle).
+# Soup 0.73.3 DataConfig does NOT support a separate local validation file path;
+# val_split is applied internally to the train file.
+# Test set (5%) is deliberately excluded.
 data:
-  train: ./data/splits/train.jsonl
-  val: ./data/splits/validation.jsonl
-  format: alpaca      # DataConfig.format — placeholder; real format TBD.
-  val_split: 0.1      # schema default, restated for clarity.
-  max_length: 1024    # SMOKE-TEST value only, not a sequence-length decision.
+  train: ./data/splits/soup_trainval.jsonl
+  format: chatml
+  val_split: 0.05263068143061777
+  max_length: 8192
+  train_on_responses_only: true
+  chat_template: gemma3
 
 # --- Training ----------------------------------------------------------------
 training:
-  # Smallest run that still exercises the full code path.
-  epochs: 1
-  lr: 2.0e-5
+  epochs: 2
+  lr: 1.0e-5
   batch_size: 1
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 8
 
   # QLoRA = 4-bit quantized base + LoRA adapter.
-  # TrainingConfig.quantization accepts "4bit" — this is the QLoRA switch.
   quantization: 4bit
 
   # LoRA adapter (TrainingConfig.lora -> LoraConfig).
-  # target_modules: "auto" lets peft resolve Gemma 3's module names, so no
-  # module name is guessed here.
+  # target_modules: "auto" lets peft resolve Gemma 3's module names.
   lora:
     r: 16
     alpha: 32
     dropout: 0.05
     target_modules: auto
 
+  # Gradient checkpointing for memory savings on long sequences (8192 tokens).
+  gradient_checkpointing: true
+
+  # Include EOS/EOT tokens in the SFT loss so the model learns to stop generating.
+  # Soup data doctor reported MAJOR: 100% of sampled rows never train an EOS/EOT.
+  train_on_eot: true
+
+  seed: 42
+  logging_steps: 10
+  save_steps: 100
+
   # Layer streaming stays OFF (schema default is already false). It is BETA and
   # is only evaluated AFTER this baseline path is proven. Enabling it would also
   # force quantization=none, which would defeat the QLoRA check above.
   stream_layers: false
 
-  seed: 42
-  logging_steps: 1
-
 # --- Output ------------------------------------------------------------------
 # Under /workspace, so checkpoints/adapters appear on the host. Gitignored.
-output: ./output/smoke-test
+output: ./output/gemma-tounsi-1.0-27b
