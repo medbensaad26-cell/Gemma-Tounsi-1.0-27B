@@ -1,0 +1,16 @@
+--- a/soup_cli/utils/gpu.py
++++ b/soup_cli/utils/gpu.py
+@@ -350,7 +350,10 @@ def model_size_from_name(model_name: str) -> float:
+     size_markers = [
+         ("70b", 70), ("65b", 65), ("34b", 34), ("33b", 33),
++        ("27b", 27), ("17b", 17), ("14b", 14),
+         ("13b", 13), ("8b", 8), ("3b", 3),
+         ("1.5b", 1.5), ("1.7b", 1.7), ("0.8b", 0.8), ("0.5b", 0.5), ("0.6b", 0.6),
+         ("7b", 7), ("1b", 1),
+@@ -357,7 +360,8 @@ def model_size_from_name(model_name: str) -> float:
+ 
+     for marker, size in size_markers:
+-        if marker in name_lower:
++        pattern = r"(?<![a-z0-9.])" + re.escape(marker) + r"(?![a-z0-9])"
++        if re.search(pattern, name_lower):
+             return size

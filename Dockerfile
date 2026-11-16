@@ -30,9 +30,18 @@
 
 FROM ghcr.io/makazhanalpamys/soup:0.73.3
 
-# The repository is bind-mounted here at run time. Nothing is COPYed into the
-# image on purpose: the build context (datasets, caches, checkpoints) must never
-# end up in a layer.
+# --- Soup 0.73.3 model-size detection patch ----------------------------------
+# Fix: model_size_from_name("google/gemma-3-27b-it") returned 7B instead of 27B
+# because substring matching allowed "7b" to match inside "27b".
+# The patch uses boundary-safe regex matching and adds the missing 27b marker.
+# Applied reproducibly at build time; build fails if patch verification fails.
+COPY patches/soup-0.73.3-model-size.patch /tmp/soup-0.73.3-model-size.patch
+COPY scripts/apply_soup_compat_patch.py /tmp/apply_soup_compat_patch.py
+RUN python3 /tmp/apply_soup_compat_patch.py
+
+# The repository is bind-mounted here at run time. Nothing else is COPYed into
+# the image on purpose: the build context (datasets, caches, checkpoints) must
+# never end up in a layer.
 WORKDIR /workspace
 
 # Upstream sets `ENTRYPOINT ["soup"]`, which would turn the documented
