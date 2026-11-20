@@ -21,7 +21,7 @@
   • scripts/upload_modal_data.ps1 (dataset upload, not yet run)                  │
   • scripts/export_checkpoint_bundle.py (checkpoint portability)                 │
   • scripts/verify_checkpoint_bundle.py (checkpoint integrity)                   │
-  • tests/test_modal_architecture.py (37 regression tests, all pass)             │
+  • tests/test_modal_architecture.py (48 regression tests, all pass)             │
 │                                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
                               │ modal run --detach
@@ -45,10 +45,11 @@
 │  │  Function: train()                                                   │   │
 │  │    • Validates dataset + SHA256                                      │   │
 │  │    • Validates HF_TOKEN                                              │   │
-│  │    • Background commit thread (30s interval)                        │   │
-│  │    • soup train --config /root/soup.modal.yaml --yes --resume auto   │   │
+│  │    • Commits completed checkpoints after subprocess exits            │   │
+│  │      (only those with trainer_state.json)                           │   │
+│  │    • Commits HF cache Volume after model download                   │   │
+│  │    • Generates checkpoint manifest with SHA256 checksums            │   │
 │  │    • Soft-stop on MAX_RUNTIME_SECONDS or STOP_AFTER_STEPS             │   │
-│  │    • Final Volume commit + checkpoint manifest                       │   │
 │  │                                                                       │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                               │
@@ -64,10 +65,10 @@
 | **1. Model-size patch** | `model_size_from_name("google/gemma-3-27b-it")` returns 7B instead of 27B | Patch files (`patches/soup-0.73.3-model-size.patch` + `scripts/apply_soup_compat_patch.py`) copied into Modal image via `add_local_file`, applied after `pip install`, smoke-tested in image build |
 | **2. HF authentication** | Gemma 3 27B is gated; needs HF_TOKEN | `modal.Secret.from_name("gemma-hf")` attached to `@app.function(secrets=[hf_secret])`. Validated in `validate_hf_token()` — fails immediately if missing. Secret must be created manually: `modal secret create gemma-hf HF_TOKEN=...` |
 | **3. Dataset mounting** | No dataset in Modal container; relative paths break | Modal Volume `gemma-tounsi-data` mounted at `/mnt/data`. Dataset at `/mnt/data/soup_trainval.jsonl`. SHA256 validation before training. Test split excluded. Upload via `scripts/upload_modal_data.ps1` |
-| **4. Checkpoint storage** | Ephemeral container loses checkpoints | Modal Volume `gemma-tounsi-checkpoints` mounted at `/checkpoints`. Output dir: `/checkpoints/gemma-tounsi-1.0-27b`. Background commit thread commits Volumes every 30s. Final commit after training. |
+| **4. Checkpoint storage** | Ephemeral container loses checkpoints | Modal Volume `gemma-tounsi-checkpoints` mounted at `/checkpoints`. Output dir: `/checkpoints/gemma-tounsi-1.0-27b`. Checkpoint-aware commits: only checkpoints with `trainer_state.json` (complete) are committed, AFTER the `soup train` subprocess exits. No periodic background commits — avoids committing partially written checkpoint files. A threading lock prevents concurrent commits. |
 | **5. HF cache** | Model re-downloaded every run | Modal Volume `gemma-tounsi-hf-cache` mounted at `/hf-cache`. `HF_HOME`, `HF_HUB_CACHE`, `TRANSFORMERS_CACHE` env vars set. Cache committed after model downloads. |
 | **6. Automatic resume** | Training restarts from scratch after interruption | `--resume auto` passed to `soup train`. Soup 0.73.3 finds latest `checkpoint-*` with `trainer_state.json`. Checkpoint manifest with SHA256 checksums generated after each session. |
-| **7. Runtime/budget** | 24h Modal timeout; no budget visibility | `MAX_RUNTIME_SECONDS=86400` (Modal max). `STOP_AFTER_STEPS` optional step-based stop. SIGTERM sent for graceful stop at checkpoint boundary. No Modal billing API — monitor via Modal web dashboard. |
+| **7. Runtime/budget** | 24h Modal timeout; no budget visibility | `MAX_RUNTIME_SECONDS=82800` (23 hours, 1-hour margin before 24h hard timeout). `STOP_AFTER_STEPS` optional step-based stop. SIGTERM sent for graceful stop at checkpoint boundary; commits happen after subprocess exits, so checkpoint transactions are never interrupted. No Modal billing API — monitor via Modal web dashboard. |
 | **8. Output paths** | Relative/ephemeral paths lose data | All paths absolute: `/mnt/data/...`, `/checkpoints/...`, `/hf-cache/...`. No relative paths. Volumes never deleted by cleanup. |
 
 ---
@@ -99,7 +100,59 @@ modal secret create gemma-hf HF_TOKEN=<your_token>
 
 ---
 
-## 4. Secret Requirements
+## 4. Checkpoint Commit Safety
+
+### Problem
+
+Modal Volumes buffer writes locally and require explicit `.commit()` calls to make them durable. A background commit thread running every 30 seconds could commit the checkpoint Volume while HF Trainer is in the middle of writing checkpoint files, resulting in partially written (corrupt) checkpoints being persisted.
+
+### Solution
+
+Checkpoint-aware commits with the following guarantees:
+
+1. **No periodic background commits.** The old 30-second commit thread was removed.
+2. **Commits happen only after the `soup train` subprocess exits.** At that point, HF Trainer has finished writing all checkpoints.
+3. **Only complete checkpoints are committed.** A checkpoint directory is considered complete ONLY when `trainer_state.json` exists. HF Trainer writes `trainer_state.json` LAST (after adapter weights, optimizer state, scheduler state, and RNG state), so its presence guarantees all checkpoint files were written and closed.
+4. **A threading lock (`commit_lock`) prevents concurrent commits** to the same Volume.
+5. **Already-committed steps are tracked** (`committed_steps` set) to avoid redundant commits.
+6. **Failed or interrupted saves never replace the latest valid checkpoint.** `_resolve_checkpoint` (Soup 0.73.3) only considers checkpoints containing `trainer_state.json`, so incomplete checkpoints are invisible to resume logic.
+
+### Checkpoint commit flow
+
+```
+Training step N reaches save_steps=100
+        │
+        ▼
+HF Trainer writes checkpoint-N files (adapter, optimizer, scheduler, RNG,
+training args, tokenizer)
+        │
+        ▼
+HF Trainer writes trainer_state.json (LAST — checkpoint is now complete)
+        │
+        ▼
+Training continues or stops (SIGTERM / timeout / completion)
+        │
+        ▼
+soup train subprocess exits
+        │
+        ▼
+commit_checkpoint_volume() scans for checkpoint-* dirs with trainer_state.json
+        │
+        ▼
+commits checkpoint Volume for newly completed checkpoints only
+        │
+        ▼
+generate_manifest() writes checkpoint_manifest.json with SHA256 checksums
+```
+
+### HF Cache Commit
+
+The HF cache Volume is committed after training completes (the model is cached by then). Dataset Volume is committed after upload (outside the app, in `scripts/upload_modal_data.ps1`).
+
+---
+
+## 5. Secret Requirements
+
 
 | Secret Name | Key | Purpose | Created By |
 |-------------|-----|---------|------------|
@@ -113,7 +166,7 @@ modal secret create gemma-hf HF_TOKEN=<your_token>
 
 ---
 
-## 5. Remote Image Contents
+## 6. Remote Image Contents
 
 The Modal image is built from `modal.Image.debian_slim()`:
 
@@ -127,7 +180,7 @@ The Modal image is built from `modal.Image.debian_slim()`:
 
 ---
 
-## 6. Checkpoint Lifecycle
+## 7. Checkpoint Lifecycle
 
 ### Checkpoint Save (Soup 0.73.3 HF Trainer)
 
@@ -179,7 +232,7 @@ Written to `/checkpoints/gemma-tounsi-1.0-27b/checkpoint_manifest.json`:
 
 ---
 
-## 7. Resume Procedure
+## 8. Resume Procedure
 
 ### Resume on Modal (same cloud)
 
@@ -221,7 +274,7 @@ Soup 0.73.3's `--resume auto` finds the latest `checkpoint-*` directory containi
 
 ---
 
-## 8. Detached Execution
+## 9. Detached Execution
 
 ### Launch
 
@@ -265,7 +318,7 @@ Soup `--resume auto` finds the latest checkpoint and continues from there.
 
 ---
 
-## 9. Alibaba Cloud Portability
+## 10. Alibaba Cloud Portability
 
 ### Portable artifacts
 
@@ -300,7 +353,7 @@ Soup `--resume auto` finds the latest checkpoint and continues from there.
 
 ---
 
-## 10. Remaining Limitations
+## 11. Remaining Limitations
 
 1. **No Modal billing API:** Cannot automatically detect remaining promotional credit. Monitor via Modal web dashboard.
 2. **VRAM estimate accuracy:** The ~17.9 GB estimate is computed by Soup's formula using the corrected 27B size. Not independently validated against measured memory usage.
@@ -311,7 +364,7 @@ Soup `--resume auto` finds the latest checkpoint and continues from there.
 
 ---
 
-## 11. Files Created or Modified
+## 12. Files Created or Modified
 
 | File | Action | Purpose |
 |------|--------|---------|
@@ -328,7 +381,7 @@ Soup `--resume auto` finds the latest checkpoint and continues from there.
 
 ---
 
-## 12. Next Steps (User Action Required)
+## 13. Next Steps (User Action Required)
 
 1. Create Modal Volumes: `modal volume create gemma-tounsi-data gemma-tounsi-checkpoints gemma-tounsi-hf-cache`
 2. Create Modal Secret: `modal secret create gemma-hf HF_TOKEN=<your_token>`

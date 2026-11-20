@@ -2,11 +2,11 @@
 # scripts/upload_modal_data.ps1
 #
 # Uploads the combined training+validation dataset to the Modal Volume
-# "gemma-tounsi-data" at path /mnt/data/soup_trainval.jsonl.
+# gemma-tounsi-data at path /mnt/data/soup_trainval.jsonl.
 #
 # Prerequisites:
 #   - Modal SDK installed and authenticated (modal setup completed)
-#   - Modal profile "medbensaad26-cell" active
+#   - Modal profile medbensaad26-cell active
 #   - Python 3.10+ with modal package available
 #
 # Usage:
@@ -26,7 +26,7 @@
 $ErrorActionPreference = "Stop"
 
 # --- Configuration ----------------------------------------------------------
-$DATASET_SOURCE = Join-Path -Path $PSScriptRoot -ChildPath "../data/splits/soup_trainval.jsonl" | Resolve-Path
+$DATASET_SOURCE = (Resolve-Path -Path (Join-Path $PSScriptRoot "../data/splits/soup_trainval.jsonl")).Path
 $DATASET_REMOTE_PATH = "/mnt/data/soup_trainval.jsonl"
 $SHA256_REMOTE_PATH = "/mnt/data/soup_trainval.jsonl.sha256"
 $MODAL_VOLUME_NAME = "gemma-tounsi-data"
@@ -56,8 +56,95 @@ function Write-Error {
     Write-Host ("[ERROR] " + $Text) -ForegroundColor Red
 }
 
+# --- Invoke-ModalCli --------------------------------------------------------
+# Runs the Modal CLI via Start-Process so Python's DeprecationWarning on stderr
+# cannot become a PowerShell NativeCommandError terminating error when
+# $ErrorActionPreference = "Stop".
+#
+# Success is determined solely by ExitCode == 0. Stderr content (e.g. Python
+# DeprecationWarning) does NOT cause failure.
+#
+# Returns a hashtable with:
+#   ExitCode  - process exit code (int)
+#   Stdout    - stdout content as string
+#   Stderr    - stderr content as string
+#
+# The executable is resolved to a full path string so executable paths
+# containing spaces are passed to Start-Process correctly. Arguments are
+# passed as an array so arguments containing spaces (e.g. Windows dataset
+# paths) are preserved as separate arguments in their original order.
+# Modal credentials are never passed as arguments.
+function Invoke-ModalCli {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+
+        [string]$Executable = "modal"
+    )
+
+    # Resolve the executable to a full path string. Start-Process receives the
+    # path as a single string, so executable paths containing spaces are handled
+    # correctly without shell quoting.
+    $exePath = $Executable
+    if ($exePath -eq "modal" -or -not (Test-Path -Path $exePath -PathType Leaf)) {
+        $cmd = Get-Command "modal" -ErrorAction SilentlyContinue
+        if ($cmd) { $exePath = $cmd.Source }
+    }
+
+    $stdoutFile = Join-Path $env:TEMP ("modal-cli-" + [guid]::NewGuid().ToString("N") + ".out")
+    $stderrFile = Join-Path $env:TEMP ("modal-cli-" + [guid]::NewGuid().ToString("N") + ".err")
+
+    $exitCode = 1
+    $stdout = ""
+    $stderr = ""
+
+    # PowerShell 5.1's Start-Process does not quote -ArgumentList elements that
+    # contain spaces, so they would be split by the target's command-line
+    # parser. Pre-quote any argument containing whitespace so each argument
+    # arrives at the target as a single argv element, preserving original order.
+    $separatorPattern = "[" + [char]32 + [char]9 + "]"
+    $quotedArguments = $Arguments | ForEach-Object {
+        if ($_ -match $separatorPattern) {
+            '"' + ($_ -replace '"', '""') + '"'
+        } else {
+            $_
+        }
+    }
+
+    try {
+        $process = Start-Process `
+            -FilePath $exePath `
+            -ArgumentList $quotedArguments `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutFile `
+            -RedirectStandardError $stderrFile
+        $exitCode = $process.ExitCode
+    } catch {
+        $exitCode = 1
+        $stderr = $_.Exception.Message
+    } finally {
+        if (Test-Path -Path $stdoutFile -PathType Leaf) {
+            $stdout = Get-Content -Raw $stdoutFile -ErrorAction SilentlyContinue
+            if (-not $stdout) { $stdout = "" }
+        }
+        if (Test-Path -Path $stderrFile -PathType Leaf) {
+            $stderr = Get-Content -Raw $stderrFile -ErrorAction SilentlyContinue
+            if (-not $stderr) { $stderr = "" }
+        }
+        Remove-Item $stdoutFile, $stderrFile -Force -ErrorAction SilentlyContinue
+    }
+
+    return @{
+        ExitCode = $exitCode
+        Stdout   = $stdout
+        Stderr   = $stderr
+    }
+}
+
 # --- Validate prerequisites -------------------------------------------------
-Write-Header "Gemma Tounsi — Modal Dataset Upload"
+Write-Header "Gemma Tounsi - Modal Dataset Upload"
 
 # Check dataset exists
 if (-not (Test-Path -Path $DATASET_SOURCE)) {
@@ -80,17 +167,26 @@ if (-not $modalExe) {
 Write-Success "Modal CLI found: $($modalExe.Source)"
 
 # Check authentication
-try {
-    $profileOutput = & modal profile current 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Modal not authenticated. Run: modal setup"
-        exit 1
-    }
-    Write-Success "Modal authenticated: $profileOutput.Trim()"
-} catch {
-    Write-Error "Modal authentication check failed: $_"
+# Use Invoke-ModalCli so Python's DeprecationWarning on stderr cannot become
+# a PowerShell NativeCommandError terminating error.
+# Exit code is the authoritative success/failure signal.
+$authResult = Invoke-ModalCli -Arguments @("profile", "current") -Executable $modalExe.Source
+
+if ($authResult.ExitCode -ne 0) {
+    Write-Error "Modal not authenticated. Exit code: $($authResult.ExitCode)`n$($authResult.Stderr)"
     exit 1
 }
+
+if ($authResult.Stderr) {
+    Write-Warning $authResult.Stderr
+}
+
+if (-not $authResult.Stdout -or $authResult.Stdout.Trim() -eq "") {
+    Write-Error "Modal authentication check failed: no profile output"
+    exit 1
+}
+
+Write-Success "Modal authenticated: $($authResult.Stdout.Trim())"
 
 # --- Compute SHA256 ---------------------------------------------------------
 Write-Header "Computing SHA256 Fingerprint"
@@ -116,26 +212,66 @@ Write-Success "SHA256 saved locally: $sha256LocalFile"
 # --- Upload to Modal Volume -------------------------------------------------
 Write-Header "Uploading to Modal Volume"
 
-# Create volume if it doesn't exist
-Write-Host "Checking/creating Modal Volume: $MODAL_VOLUME_NAME"
-& modal volume create $MODAL_VOLUME_NAME 2>&1
-if ($LASTEXITCODE -ne 0) {
-    # Volume may already exist — that's OK
-    $volList = & modal volume list 2>&1
-    if ($volList -match $MODAL_VOLUME_NAME) {
-        Write-Success "Volume '$MODAL_VOLUME_NAME' already exists"
-    } else {
-        Write-Error "Failed to create/check volume '$MODAL_VOLUME_NAME'"
+# Check if volume already exists before attempting creation
+Write-Host "Checking Modal Volume: $MODAL_VOLUME_NAME"
+$volumeListResult = Invoke-ModalCli -Arguments @("volume", "list") -Executable $modalExe.Source
+
+if ($volumeListResult.ExitCode -ne 0) {
+    Write-Error "Failed to list Modal volumes. Exit code: $($volumeListResult.ExitCode)`n$($volumeListResult.Stderr)"
+    exit 1
+}
+
+if ($volumeListResult.Stderr) {
+    Write-Warning $volumeListResult.Stderr
+}
+
+$volumeExists = $volumeListResult.Stdout -match $MODAL_VOLUME_NAME
+
+if ($volumeExists) {
+    Write-Success "Volume $MODAL_VOLUME_NAME already exists"
+} else {
+    Write-Host "Creating Modal Volume: $MODAL_VOLUME_NAME ..."
+    $createResult = Invoke-ModalCli -Arguments @("volume", "create", $MODAL_VOLUME_NAME) -Executable $modalExe.Source
+
+    if ($createResult.ExitCode -ne 0) {
+        Write-Error "Failed to create Modal Volume $MODAL_VOLUME_NAME. Exit code: $($createResult.ExitCode)`n$($createResult.Stderr)"
         exit 1
     }
+
+    if ($createResult.Stderr) {
+        Write-Warning $createResult.Stderr
+    }
+
+    Write-Success "Volume $MODAL_VOLUME_NAME created"
+}
+
+# Verify the volume exists
+$verifyResult = Invoke-ModalCli -Arguments @("volume", "list") -Executable $modalExe.Source
+if ($verifyResult.ExitCode -ne 0) {
+    Write-Error "Failed to verify Modal Volume. Exit code: $($verifyResult.ExitCode)`n$($verifyResult.Stderr)"
+    exit 1
+}
+
+if ($verifyResult.Stderr) {
+    Write-Warning $verifyResult.Stderr
+}
+
+if ($verifyResult.Stdout -notmatch $MODAL_VOLUME_NAME) {
+    Write-Error "Modal Volume $MODAL_VOLUME_NAME does not exist after creation attempt"
+    exit 1
 }
 
 # Upload dataset file
 Write-Host "Uploading dataset to $DATASET_REMOTE_PATH ..."
-& modal volume put $MODAL_VOLUME_NAME $DATASET_SOURCE $DATASET_REMOTE_PATH 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to upload dataset to Modal Volume"
+$uploadResult = Invoke-ModalCli -Arguments @("volume", "put", $MODAL_VOLUME_NAME, $DATASET_SOURCE, $DATASET_REMOTE_PATH) -Executable $modalExe.Source
+
+if ($uploadResult.ExitCode -ne 0) {
+    Write-Error "Failed to upload dataset to Modal Volume. Exit code: $($uploadResult.ExitCode)`n$($uploadResult.Stderr)"
     exit 1
+}
+
+if ($uploadResult.Stderr) {
+    Write-Warning $uploadResult.Stderr
 }
 Write-Success "Dataset uploaded to $DATASET_REMOTE_PATH"
 
@@ -143,10 +279,15 @@ Write-Success "Dataset uploaded to $DATASET_REMOTE_PATH"
 $tempSha256 = [System.IO.Path]::GetTempFileName()
 $hashString | Out-File -FilePath $tempSha256 -Encoding utf8 -NoNewline
 Write-Host "Uploading SHA256 fingerprint to $SHA256_REMOTE_PATH ..."
-& modal volume put $MODAL_VOLUME_NAME $tempSha256 $SHA256_REMOTE_PATH 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to upload SHA256 fingerprint"
+$uploadShaResult = Invoke-ModalCli -Arguments @("volume", "put", $MODAL_VOLUME_NAME, $tempSha256, $SHA256_REMOTE_PATH) -Executable $modalExe.Source
+
+if ($uploadShaResult.ExitCode -ne 0) {
+    Write-Error "Failed to upload SHA256 fingerprint. Exit code: $($uploadShaResult.ExitCode)`n$($uploadShaResult.Stderr)"
     exit 1
+}
+
+if ($uploadShaResult.Stderr) {
+    Write-Warning $uploadShaResult.Stderr
 }
 Write-Success "SHA256 fingerprint uploaded to $SHA256_REMOTE_PATH"
 
@@ -155,10 +296,15 @@ Remove-Item -Path $tempSha256 -Force
 
 # Commit the Volume
 Write-Host "Committing Modal Volume ..."
-& modal volume commit $MODAL_VOLUME_NAME 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to commit Modal Volume"
+$commitResult = Invoke-ModalCli -Arguments @("volume", "commit", $MODAL_VOLUME_NAME) -Executable $modalExe.Source
+
+if ($commitResult.ExitCode -ne 0) {
+    Write-Error "Failed to commit Modal Volume. Exit code: $($commitResult.ExitCode)`n$($commitResult.Stderr)"
     exit 1
+}
+
+if ($commitResult.Stderr) {
+    Write-Warning $commitResult.Stderr
 }
 Write-Success "Volume committed"
 

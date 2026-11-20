@@ -1,0 +1,304 @@
+{
+  "project": "Gemma Tounsi 1.0 27B",
+  "base_model": "google/gemma-3-27b-it",
+  "framework": "Soup (QLoRA SFT)",
+  "seed": 42,
+  "tokenizer": {
+    "name": "google/gemma-3-27b-it",
+    "local_path": ".cache\\huggingface\\hub\\models--google--gemma-3-27b-it\\snapshots\\005ad3404e59d6023443cb575daa05336842228a",
+    "method": "apply_chat_template(chatml/gemma3, add_special_tokens=False)",
+    "note": "Total formatted sequence tokens (user + assistant)"
+  },
+  "original_source": {
+    "train": {
+      "path": "data\\splits\\train.jsonl",
+      "size_bytes": 626458876,
+      "sha256": "86fd39254eda303c7e2f8dc4adaa11bfb5fa7e6a542fbf4fa0675548765b3a14"
+    },
+    "validation": {
+      "path": "data\\splits\\validation.jsonl",
+      "size_bytes": 35166425,
+      "sha256": "b57b3bb87999c6f58c656d1b25db747267ef26913b32be0f6610f716451060d4"
+    },
+    "test": {
+      "path": "data\\splits\\test.jsonl",
+      "size_bytes": 34850410,
+      "sha256": "95f43a8fba2f5e0f7f309a00d8a52b705952e4bfa62158aff029a1e0ac79e53a"
+    },
+    "soup_trainval": {
+      "path": "data\\splits\\soup_trainval.jsonl",
+      "size_bytes": 661625301,
+      "sha256": "c6299fac164f6772175342b986856927a3c1c5a7496cd273f937206361f5cfe7"
+    }
+  },
+  "training_data_consumed_by_soup": {
+    "file": "data\\splits\\train.jsonl",
+    "note": "Soup reads soup_trainval.jsonl and applies val_split internally; the 90% training portion equals data/splits/train.jsonl"
+  },
+  "original_audit": {
+    "total_examples": 666660,
+    "total_tokens": 105457155,
+    "disk_size_bytes": 626458876,
+    "by_language": {
+      "ar": 360790,
+      "en": 110542,
+      "arabizi": 183423,
+      "mixed": 11905
+    },
+    "tokens_by_language": {
+      "ar": 51332625,
+      "en": 44642787,
+      "arabizi": 8940111,
+      "mixed": 541632
+    },
+    "by_category": {
+      "general_instruction": 506822,
+      "coding": 4431,
+      "mathematics": 39464,
+      "reasoning": 30675,
+      "knowledge_qa": 85268
+    },
+    "by_source": {
+      "alpaca_arabic_gpt4": 38356,
+      "ArabicaQA-SIGIR2024": 7805,
+      "aya_dataset_arabic": 3600,
+      "cidar": 7726,
+      "code-feedback": 4431,
+      "metamathqa": 39464,
+      "slimorca": 66647,
+      "ctab": 5113,
+      "farah21_reddit_tunisia_qa_mixed": 779,
+      "farah21_reddit_tunisia_qa": 120,
+      "farah21_tunisia_tech": 72,
+      "tarc": 21705,
+      "tunizi_v2": 145417,
+      "tunizi_v1": 8943,
+      "chaymafourati_tunizi": 1274,
+      "hamzabouajila_tunisian_derja_unified": 141691,
+      "linagora_HkayetErwi": 792,
+      "linagora_QADI_TunisianDialect": 7562,
+      "linagora_TunisianSentimentAnalysis": 20275,
+      "linagora_Sentiment_Derja": 19556,
+      "linagora_TunBERT": 17984,
+      "syrinesmati_tunisian_question_response": 451,
+      "linagora_tunisian_derja_dataset_tsc": 96557,
+      "linto_text_ar_tn_tsc": 10340
+    },
+    "avg_tokens_per_example": 158.18731437314372,
+    "min_tokens": 13,
+    "median_tokens": 45,
+    "max_tokens": 43565
+  },
+  "variant_targets": {
+    "75_percent": 0.75,
+    "50_percent": 0.5,
+    "25_percent": 0.25
+  },
+  "variants": {
+    "25_percent": {
+      "target_fraction": 0.25,
+      "target_tokens": 26364288,
+      "achieved_tokens": 26364284,
+      "achieved_fraction": 0.24999995495801114,
+      "total_examples": 242817,
+      "file": "data\\experiments\\downsampled\\25_percent\\train.jsonl",
+      "sha256": "3085f2d930e84f9b0d8159dbe9844e734950d049482a1dcde237676588108ddc",
+      "stats": {
+        "total_examples": 242817,
+        "total_tokens": 26364284,
+        "by_language": {
+          "arabizi": 183423,
+          "mixed": 11905,
+          "en": 36489,
+          "ar": 11000
+        },
+        "tokens_by_language": {
+          "arabizi": 8940111,
+          "mixed": 541632,
+          "en": 15396379,
+          "ar": 1486162
+        },
+        "pct_examples_by_language": {
+          "arabizi": 75.53960389923276,
+          "mixed": 4.9028692389742075,
+          "en": 15.027366288192342,
+          "ar": 4.530160573600695
+        },
+        "pct_tokens_by_language": {
+          "arabizi": 33.909932847028955,
+          "mixed": 2.054415739111292,
+          "en": 58.398623683465104,
+          "ar": 5.63702773039465
+        },
+        "by_category": {
+          "general_instruction": 145434,
+          "knowledge_qa": 73303,
+          "coding": 2791,
+          "mathematics": 14692,
+          "reasoning": 6597
+        },
+        "by_source": {
+          "ctab": 5113,
+          "farah21_reddit_tunisia_qa_mixed": 779,
+          "farah21_reddit_tunisia_qa": 120,
+          "farah21_tunisia_tech": 72,
+          "tarc": 21705,
+          "tunizi_v2": 145417,
+          "tunizi_v1": 8943,
+          "chaymafourati_tunizi": 1274,
+          "hamzabouajila_tunisian_derja_unified": 12762,
+          "linagora_tunisian_derja_dataset_tsc": 7080,
+          "code-feedback": 2791,
+          "ArabicaQA-SIGIR2024": 428,
+          "slimorca": 19006,
+          "metamathqa": 14692,
+          "cidar": 327,
+          "aya_dataset_arabic": 154,
+          "linto_text_ar_tn_tsc": 743,
+          "syrinesmati_tunisian_question_response": 35,
+          "alpaca_arabic_gpt4": 1376
+        }
+      }
+    },
+    "50_percent": {
+      "target_fraction": 0.5,
+      "target_tokens": 52728577,
+      "achieved_tokens": 52728575,
+      "achieved_fraction": 0.4999999762936901,
+      "total_examples": 345949,
+      "file": "data\\experiments\\downsampled\\50_percent\\train.jsonl",
+      "sha256": "7ae7dbb4147dde2f47bd6a8e46b34d4b1d7bd696d57762b994c0c6bd2b0384ee",
+      "stats": {
+        "total_examples": 345949,
+        "total_tokens": 52728575,
+        "by_language": {
+          "arabizi": 183423,
+          "mixed": 11905,
+          "en": 82728,
+          "ar": 67893
+        },
+        "tokens_by_language": {
+          "arabizi": 8940111,
+          "mixed": 541632,
+          "en": 32880933,
+          "ar": 10365899
+        },
+        "pct_examples_by_language": {
+          "arabizi": 53.02024286816843,
+          "mixed": 3.441258682638192,
+          "en": 23.91335138994476,
+          "ar": 19.62514705924862
+        },
+        "pct_tokens_by_language": {
+          "arabizi": 16.954964172652115,
+          "mixed": 1.027207733188314,
+          "en": 62.35885001633365,
+          "ar": 19.65897807782592
+        },
+        "by_category": {
+          "general_instruction": 208351,
+          "knowledge_qa": 83663,
+          "coding": 4431,
+          "mathematics": 33891,
+          "reasoning": 15613
+        },
+        "by_source": {
+          "ctab": 5113,
+          "farah21_reddit_tunisia_qa_mixed": 779,
+          "farah21_reddit_tunisia_qa": 120,
+          "farah21_tunisia_tech": 72,
+          "tarc": 21705,
+          "tunizi_v2": 145417,
+          "tunizi_v1": 8943,
+          "chaymafourati_tunizi": 1274,
+          "hamzabouajila_tunisian_derja_unified": 47374,
+          "linagora_tunisian_derja_dataset_tsc": 18574,
+          "code-feedback": 4431,
+          "ArabicaQA-SIGIR2024": 905,
+          "slimorca": 44406,
+          "metamathqa": 33891,
+          "cidar": 844,
+          "aya_dataset_arabic": 399,
+          "linto_text_ar_tn_tsc": 1934,
+          "syrinesmati_tunisian_question_response": 95,
+          "alpaca_arabic_gpt4": 3928,
+          "linagora_TunisianSentimentAnalysis": 1115,
+          "linagora_TunBERT": 3182,
+          "linagora_Sentiment_Derja": 1061,
+          "linagora_QADI_TunisianDialect": 366,
+          "linagora_HkayetErwi": 21
+        }
+      }
+    },
+    "75_percent": {
+      "target_fraction": 0.75,
+      "target_tokens": 79092866,
+      "achieved_tokens": 79092862,
+      "achieved_fraction": 0.7499999596992731,
+      "total_examples": 466791,
+      "file": "data\\experiments\\downsampled\\75_percent\\train.jsonl",
+      "sha256": "33bddcd738e1ff72cccac0c72026356d45cd45575523678018bd9db8dea7de73",
+      "stats": {
+        "total_examples": 466791,
+        "total_tokens": 79092862,
+        "by_language": {
+          "arabizi": 183423,
+          "mixed": 11905,
+          "en": 109626,
+          "ar": 161837
+        },
+        "tokens_by_language": {
+          "arabizi": 8940111,
+          "mixed": 541632,
+          "en": 44135778,
+          "ar": 25475341
+        },
+        "pct_examples_by_language": {
+          "arabizi": 39.29445940474431,
+          "mixed": 2.5503919312925913,
+          "en": 23.48502863165742,
+          "ar": 34.67012003230568
+        },
+        "pct_tokens_by_language": {
+          "arabizi": 11.303309519890682,
+          "mixed": 0.684805159787997,
+          "en": 55.802479369124356,
+          "ar": 32.20940595119696
+        },
+        "by_category": {
+          "general_instruction": 307869,
+          "knowledge_qa": 85268,
+          "coding": 4431,
+          "mathematics": 39464,
+          "reasoning": 29759
+        },
+        "by_source": {
+          "ctab": 5113,
+          "farah21_reddit_tunisia_qa_mixed": 779,
+          "farah21_reddit_tunisia_qa": 120,
+          "farah21_tunisia_tech": 72,
+          "tarc": 21705,
+          "tunizi_v2": 145417,
+          "tunizi_v1": 8943,
+          "chaymafourati_tunizi": 1274,
+          "hamzabouajila_tunisian_derja_unified": 104846,
+          "linagora_tunisian_derja_dataset_tsc": 37069,
+          "code-feedback": 4431,
+          "ArabicaQA-SIGIR2024": 1694,
+          "slimorca": 65731,
+          "metamathqa": 39464,
+          "cidar": 1617,
+          "aya_dataset_arabic": 762,
+          "linto_text_ar_tn_tsc": 3937,
+          "syrinesmati_tunisian_question_response": 186,
+          "alpaca_arabic_gpt4": 7881,
+          "linagora_TunisianSentimentAnalysis": 2992,
+          "linagora_TunBERT": 8644,
+          "linagora_Sentiment_Derja": 2922,
+          "linagora_QADI_TunisianDialect": 1095,
+          "linagora_HkayetErwi": 97
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,97 @@
+# =============================================================================
+# soup.custom_75_25_english.yaml — Gemma Tounsi 1.0 (27B) QLoRA experimental config
+# =============================================================================
+#
+# EXPERIMENTAL CONFIGURATION — does NOT modify soup.yaml (production).
+#
+# Dataset: data/experiments/downsampled/custom_75_25_english/train.jsonl
+#   - 384,572 examples, 45,926,282 tokens (verified, see manifest.json)
+#   - Arabizi 183,423 / ar 161,837 / mixed 11,905 / en 27,407
+#   - Pure training split: contains NO validation.jsonl and NO test.jsonl examples
+#     (integrity verified: no validation/test leakage).
+#
+# Validation: data/splits/validation.jsonl (37,036 examples) is the original
+#   5% validation split and is preserved UNCHANGED.
+# Test: data/splits/test.jsonl (37,038 examples) remains excluded.
+#
+# IMPORTANT — Soup 0.73.3 validation limitation:
+#   Soup 0.73.3 DataConfig does NOT support a separate local validation file.
+#   val_split is applied INTERNALLY to the train file only. Because this
+#   config trains on a pure-training file (no validation examples mixed in),
+#   val_split is set to 0.0 so 100% of the custom train data is used for
+#   training and NO examples are withheld for an internal validation split.
+#   data/splits/validation.jsonl is therefore NOT consumed by Soup during
+#   training; it is reserved for post-training evaluation. This guarantees
+#   zero validation/test leakage into training by construction.
+#
+# QLoRA hyperparameters mirror soup.yaml (no arbitrary changes):
+#   4-bit quantization, LoRA r=16/alpha=32/dropout=0.05,
+#   target_modules=[q_proj, k_proj, v_proj, o_proj] (explicit; "auto" is
+#   converted to None by Soup 0.73.3 and rejected by PEFT),
+#   batch_size=1, gradient_accumulation_steps=8, lr=1.0e-5, epochs=2,
+#   max_length=8192, gradient_checkpointing=true, save_steps=100.
+#
+# Run locally (Docker):
+#   docker compose run --rm soup soup train --config /workspace/soup.custom_75_25_english.yaml
+#
+# Paths are container paths: the repository root is mounted at /workspace.
+# =============================================================================
+
+# --- Base model --------------------------------------------------------------
+base: google/gemma-3-27b-it
+
+# SoupConfig.task — supervised fine-tuning.
+task: sft
+
+# SoupConfig.backend — stock transformers path.
+backend: transformers
+
+# SoupConfig.modality — text SFT.
+modality: text
+
+# --- Data --------------------------------------------------------------------
+data:
+  train: ./data/experiments/downsampled/custom_75_25_english/train.jsonl
+  format: chatml
+  # Soup 0.73.3 carves validation internally from the train file. Set to 0.0
+  # so the entire pure-training custom file is used for training and no
+  # examples are withheld. validation.jsonl is used post-training only.
+  val_split: 0.0
+  max_length: 8192
+  train_on_responses_only: true
+  chat_template: gemma3
+
+# --- Training ----------------------------------------------------------------
+training:
+  epochs: 2
+  lr: 1.0e-5
+  batch_size: 1
+  gradient_accumulation_steps: 8
+
+  # QLoRA = 4-bit quantized base + LoRA adapter.
+  quantization: 4bit
+
+  # LoRA adapter (explicit Gemma 3 attention targets — Soup 0.73.3 converts
+  # "auto" to None before PEFT, which raises "Please specify target_modules or
+  # target_parameters in peft_config"; see sft.py target_module handling).
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules:
+      - q_proj
+      - k_proj
+      - v_proj
+      - o_proj
+
+  gradient_checkpointing: true
+  train_on_eot: true
+
+  seed: 42
+  logging_steps: 10
+  save_steps: 100
+
+  stream_layers: false
+
+# --- Output ------------------------------------------------------------------
+output: ./output/gemma-tounsi-1.0-27b-custom-75-25-english

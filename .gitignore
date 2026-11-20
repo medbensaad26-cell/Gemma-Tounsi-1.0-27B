@@ -156,6 +156,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env.modal
 
 # Spyder project settings
 .spyderproject
@@ -311,6 +312,22 @@ weights/
 *.gguf
 *.onnx
 *.npz
+
+# --- Release artifacts: track metadata & structure, ignore large weights -----
+# releases/gemma-tounsi-v1/ README, INSTALL, and JSON metadata ARE tracked.
+# Large model weights (.safetensors, .pt, .pth, ...) inside it are NOT — they
+# are downloaded from Modal after training.
+!releases/gemma-tounsi-v1/
+!releases/gemma-tounsi-v1/README.md
+!releases/gemma-tounsi-v1/INSTALL.md
+!releases/gemma-tounsi-v1/*.json
+!releases/gemma-tounsi-v1/*.txt
+!releases/gemma-tounsi-v1/adapter/
+!releases/gemma-tounsi-v1/adapter/.gitkeep
+!releases/gemma-tounsi-v1/checkpoint/
+!releases/gemma-tounsi-v1/checkpoint/.gitkeep
+!releases/gemma-tounsi-v1/tokenizer/
+!releases/gemma-tounsi-v1/tokenizer/.gitkeep
 
 # --- Experiment outputs & generated artifacts --------------------------------
 outputs/

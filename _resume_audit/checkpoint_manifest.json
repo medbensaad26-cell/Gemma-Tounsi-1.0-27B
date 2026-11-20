@@ -1,0 +1,216 @@
+{
+  "project": "gemma-tounsi-1.0-27b-custom-75-25-english",
+  "base_model": "google/gemma-3-27b-it",
+  "base_model_revision": "005ad3404e59d6023443cb575daa05336842228a",
+  "soup_version": "0.73.3",
+  "python_version": "3.12.10 (main, May 21 2025, 23:34:56) [GCC 12.2.0]",
+  "dependencies": {
+    "torch": "2.15.0",
+    "transformers": "4.57.6",
+    "peft": "0.21.3",
+    "bitsandbytes": "0.50.2",
+    "soup-cli": "0.73.3"
+  },
+  "training_config_fingerprint": "",
+  "dataset_fingerprint": "b6369becf9d536495df59a0849065f5117903596038eff7a9945168ca4672ff0",
+  "checkpoints": [
+    {
+      "step": 600,
+      "path": "checkpoint-600",
+      "files": [
+        {
+          "name": "README.md",
+          "size": 5208,
+          "sha256": "90a6c63050c91cc22fd4a5e2f0081b09073939de0ca4e91293d6d90ce473d9ad"
+        },
+        {
+          "name": "adapter_config.json",
+          "size": 1128,
+          "sha256": "d26e973c2290babae9972e5bed76ff64b455dd09af763dea734567f9a2079cf6"
+        },
+        {
+          "name": "adapter_model.safetensors",
+          "size": 73117472,
+          "sha256": "398a833c67a94ca7d1458c6e43277799fcdd86cff28ba2c67cc23efda953b992"
+        },
+        {
+          "name": "chat_template.jinja",
+          "size": 211,
+          "sha256": "52e913c9c8b7f37421fa7ebb444a22af3a524755a8f2c8e3e23229fddebd5701"
+        },
+        {
+          "name": "optimizer.pt",
+          "size": 134506355,
+          "sha256": "cc75413312bfeaad436f272cfe734d4ebf5a79697e0fcf101f90592539885bd9"
+        },
+        {
+          "name": "rng_state.pth",
+          "size": 14645,
+          "sha256": "94cf2bd5d12d7c89b42b487ecdc2ee4f679a041622eaa83832070e3a72ba74fb"
+        },
+        {
+          "name": "scheduler.pt",
+          "size": 1465,
+          "sha256": "276b3d5fad389dd6b6e571be8abea3c445fefcdd7d64a11e1c321fdf2a4beef5"
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 662,
+          "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 33384568,
+          "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 1155387,
+          "sha256": "983c80895e7b188911f5ccfbb4f780a4e73fb3131ed2080a3e847ef8623cfdca"
+        },
+        {
+          "name": "trainer_state.json",
+          "size": 17502,
+          "sha256": "075c0404ebf5b767706ba3cb9ede3a9a9c09051224af610a75ad15ff00e3dae4"
+        },
+        {
+          "name": "training_args.bin",
+          "size": 6289,
+          "sha256": "4a2ce09815ba912ab49f775ba945fd4c082cc87569a3c0418880055cd286fee5"
+        }
+      ]
+    },
+    {
+      "step": 700,
+      "path": "checkpoint-700",
+      "files": [
+        {
+          "name": "README.md",
+          "size": 5208,
+          "sha256": "90a6c63050c91cc22fd4a5e2f0081b09073939de0ca4e91293d6d90ce473d9ad"
+        },
+        {
+          "name": "adapter_config.json",
+          "size": 1128,
+          "sha256": "d26e973c2290babae9972e5bed76ff64b455dd09af763dea734567f9a2079cf6"
+        },
+        {
+          "name": "adapter_model.safetensors",
+          "size": 73117472,
+          "sha256": "f254e380a5b2e9ca7b18d91699d61195c988fd86c8b26ada5167054aa7169de2"
+        },
+        {
+          "name": "chat_template.jinja",
+          "size": 211,
+          "sha256": "52e913c9c8b7f37421fa7ebb444a22af3a524755a8f2c8e3e23229fddebd5701"
+        },
+        {
+          "name": "optimizer.pt",
+          "size": 134506355,
+          "sha256": "2378fa79e9ec0e8a2f4326052ff63124c411edff3f57a51797bba520784c1634"
+        },
+        {
+          "name": "rng_state.pth",
+          "size": 14645,
+          "sha256": "2ee7e22a8ffa53b23cbad84efdd51dfa64ac028d2b2a1f0225330d7dadd1ec79"
+        },
+        {
+          "name": "scheduler.pt",
+          "size": 1465,
+          "sha256": "5ab715b4627d06c441dfa492bd23f7e8fc09175fb30dadc5085493e709ad454a"
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 662,
+          "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 33384568,
+          "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 1155387,
+          "sha256": "983c80895e7b188911f5ccfbb4f780a4e73fb3131ed2080a3e847ef8623cfdca"
+        },
+        {
+          "name": "trainer_state.json",
+          "size": 20282,
+          "sha256": "7270e2871f72b1657bc93e5edc51dd7cfc4a4a65626bcebd999f4e0232bcc9d6"
+        },
+        {
+          "name": "training_args.bin",
+          "size": 6289,
+          "sha256": "4a2ce09815ba912ab49f775ba945fd4c082cc87569a3c0418880055cd286fee5"
+        }
+      ]
+    },
+    {
+      "step": 800,
+      "path": "checkpoint-800",
+      "files": [
+        {
+          "name": "README.md",
+          "size": 5208,
+          "sha256": "90a6c63050c91cc22fd4a5e2f0081b09073939de0ca4e91293d6d90ce473d9ad"
+        },
+        {
+          "name": "adapter_config.json",
+          "size": 1128,
+          "sha256": "d26e973c2290babae9972e5bed76ff64b455dd09af763dea734567f9a2079cf6"
+        },
+        {
+          "name": "adapter_model.safetensors",
+          "size": 73117472,
+          "sha256": "f72a9b3567016c36b45848785d8ed9a67e8a1cc6164dcae988720e59699368a1"
+        },
+        {
+          "name": "chat_template.jinja",
+          "size": 211,
+          "sha256": "52e913c9c8b7f37421fa7ebb444a22af3a524755a8f2c8e3e23229fddebd5701"
+        },
+        {
+          "name": "optimizer.pt",
+          "size": 134506355,
+          "sha256": "990809d87d187cfa65c54d7ee7ccf36fc5fec5c943532e835acfc326d5a59c28"
+        },
+        {
+          "name": "rng_state.pth",
+          "size": 14645,
+          "sha256": "1a84a0c873f93fe200f420a1a11a5121f58847f46722b2e23cf550c8cb848b4a"
+        },
+        {
+          "name": "scheduler.pt",
+          "size": 1465,
+          "sha256": "48397c6aab91ae9326d3155d7adc9ef25645bcaa210c2e738debc88b5814cd01"
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 662,
+          "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 33384568,
+          "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 1155387,
+          "sha256": "983c80895e7b188911f5ccfbb4f780a4e73fb3131ed2080a3e847ef8623cfdca"
+        },
+        {
+          "name": "trainer_state.json",
+          "size": 23062,
+          "sha256": "537d4ff4bd3697373b2133b7f52ece5b98f6f137bc39be3e4b029c32655f8c2a"
+        },
+        {
+          "name": "training_args.bin",
+          "size": 6289,
+          "sha256": "4a2ce09815ba912ab49f775ba945fd4c082cc87569a3c0418880055cd286fee5"
+        }
+      ]
+    }
+  ]
+}

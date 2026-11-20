@@ -1,0 +1,1202 @@
+[
+  {
+    "id": "arabi_01",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Jawibni b derja tounsia: chnowa a7welek? Kifech 3addit nharek?",
+    "description": "Everyday greeting",
+    "expected_behavior": "Natural, conversational Tunisian Arabizi; not MSA."
+  },
+  {
+    "id": "arabi_02",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli b tounsi chnowa ma3neha wa9t el faragh w 3lech lezem na3tiw rou7na wa9t nerta7ou.",
+    "description": "Explain a common concept",
+    "expected_behavior": "Clear Tunisian explanation with practical examples."
+  },
+  {
+    "id": "arabi_03",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "3andi barcha 9raya w devoirat fi jem3a wa7da. A3tini tari9a norganizi biha wa9ti.",
+    "description": "Student time management",
+    "expected_behavior": "Actionable study plan in natural Derja."
+  },
+  {
+    "id": "arabi_04",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Chnowa lfar9 bin stage d'ete w PFE? Fasserli b tari9a sahl.",
+    "description": "Internship terminology",
+    "expected_behavior": "Distinguish summer internship from final-year project internship."
+  },
+  {
+    "id": "arabi_05",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "N7eb n7adher ftour sahl w ma ykallefch barcha. Chnowa ta9tara7 3liya?",
+    "description": "Budget meal suggestion",
+    "expected_behavior": "Practical, low-cost meal ideas without unsupported claims."
+  },
+  {
+    "id": "arabi_06",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Sahbi 9al9an 5ater 3andou examen ghodwa. Chnowa najm n9ollou b tounsi bech nchaja3ou?",
+    "description": "Empathetic response",
+    "expected_behavior": "Supportive, natural Tunisian tone."
+  },
+  {
+    "id": "arabi_07",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ektebli message mo7taram lel professeur n9ollou fih elli bech net2a5er 3al cours 10 d9aye9.",
+    "description": "Polite message drafting",
+    "expected_behavior": "Short, respectful Tunisian message."
+  },
+  {
+    "id": "arabi_08",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli chnowa howa l'intelligence artificielle b exemple men 7yetna lyoumiya.",
+    "description": "Explain AI simply",
+    "expected_behavior": "Accurate beginner-friendly explanation in Derja."
+  },
+  {
+    "id": "arabi_09",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Chnowa lfar9 bin AI, machine learning w deep learning?",
+    "description": "AI concepts",
+    "expected_behavior": "Explain the hierarchy accurately and simply."
+  },
+  {
+    "id": "arabi_10",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli RAG fi les applications mta3 AI w 3lech nesta3mlouh.",
+    "description": "RAG concept",
+    "expected_behavior": "Explain retrieval plus generation and why it helps grounding."
+  },
+  {
+    "id": "arabi_11",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ken model AI ya3ti jawab ghalet w yodhhor met2aked, chnowa nsamiw el mochkel hedha?",
+    "description": "AI hallucinations",
+    "expected_behavior": "Identify hallucination and explain verification."
+  },
+  {
+    "id": "arabi_12",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "A3tini plan fi nhar wa7ed bech nethanna 3la Tunis l9dima, bla ma t7ot horaires mou2akkda.",
+    "description": "Local itinerary",
+    "expected_behavior": "Plausible flexible itinerary; avoid claiming current hours."
+  },
+  {
+    "id": "arabi_13",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "N7eb net3allem Git. Fasserli chnowa ya3mel commit w chnowa lfar9 binou w push.",
+    "description": "Git fundamentals",
+    "expected_behavior": "Correctly distinguish local commit and remote push."
+  },
+  {
+    "id": "arabi_14",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "3andi liste Python esmha nums. Kifech na7seb somme mta3 les nombres pairs? Warini code w fasser.",
+    "description": "Python fundamentals",
+    "expected_behavior": "Provide correct runnable Python and explain filtering/summing."
+  },
+  {
+    "id": "arabi_15",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "A3tini exemple sahl 3la function fi Python ta5ou esm w traja3 greeting.",
+    "description": "Python function",
+    "expected_behavior": "Valid concise function and example call."
+  },
+  {
+    "id": "arabi_16",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli b tounsi chnowa ya3ni overfitting fi machine learning w kifech n9alllou mennou.",
+    "description": "ML overfitting",
+    "expected_behavior": "Accurate explanation and remedies."
+  },
+  {
+    "id": "arabi_17",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Kifech nfar9 bin data training w data validation w data test?",
+    "description": "Dataset splits",
+    "expected_behavior": "Correctly explain three distinct roles and leakage risk."
+  },
+  {
+    "id": "arabi_18",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ken 3andi 3 sa3at 9raya, 4 matières w matière s3iba barcha, kifech no9sem el wa9t?",
+    "description": "Planning under constraints",
+    "expected_behavior": "Give a feasible schedule and prioritize difficult subject."
+  },
+  {
+    "id": "arabi_19",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "N7eb na3mel CV lel stage AI/ML. Chnowa aham 5 7ajet lezem n7othom?",
+    "description": "CV guidance",
+    "expected_behavior": "Specific relevant CV sections and project evidence."
+  },
+  {
+    "id": "arabi_20",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Kifech nfassar projet machine learning fi entretien fi 60 seconde?",
+    "description": "Interview communication",
+    "expected_behavior": "Structured concise explanation: problem, data, method, result."
+  },
+  {
+    "id": "arabi_21",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ektebli réponse b tounsi w b style mo7taram 3la client ychki mel retard mta3 commande.",
+    "description": "Customer communication",
+    "expected_behavior": "Empathetic apology and clear next step without invented facts."
+  },
+  {
+    "id": "arabi_22",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Chnowa lfar9 bin Arabizi w kteba bel 3arbi? W wa9tech kol wa7da tnajem tkoun mofida?",
+    "description": "Writing systems",
+    "expected_behavior": "Describe scripts neutrally and explain context."
+  },
+  {
+    "id": "arabi_23",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "A3tini 3 tari9a sghar bech n9alllou men tabdhir el mé fi dar.",
+    "description": "Environmental advice",
+    "expected_behavior": "Practical water-saving steps."
+  },
+  {
+    "id": "arabi_24",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "3lech lezemna n7miw les données personnelles ki nesta3mlou applications AI?",
+    "description": "AI privacy",
+    "expected_behavior": "Explain privacy and practical precautions."
+  },
+  {
+    "id": "arabi_25",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ken produit soumou 80 dinar w 3malou remise 15%, 9addech ywali soumou? Fasser el 7seb.",
+    "description": "Percentage calculation",
+    "expected_behavior": "Calculate 68 dinars and show reasoning."
+  },
+  {
+    "id": "arabi_26",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Chnowa ma3neha API? A3tini exemple kif application météo testa3mel API.",
+    "description": "API concept",
+    "expected_behavior": "Explain interface/request-response with example."
+  },
+  {
+    "id": "arabi_27",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli chnowa embeddings fi NLP b exemple sahl.",
+    "description": "Embeddings",
+    "expected_behavior": "Explain vectors representing semantic information."
+  },
+  {
+    "id": "arabi_28",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "N7eb net3allem anglais technique. A3tini routine 20 d9i9a kol nhar.",
+    "description": "Language-learning advice",
+    "expected_behavior": "Concrete, sustainable routine."
+  },
+  {
+    "id": "arabi_29",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Kifech na3mel backup lel projet Python mte3i w 3lech GitHub wa7dou moch backup kefi?",
+    "description": "Project backup",
+    "expected_behavior": "Explain remote repo plus additional backup practices."
+  },
+  {
+    "id": "arabi_30",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Sahbi ma y7ebech ya3mel teamwork w y7eb ya5dem wa7dou. Kifech nfassrlou ahammiyet collaboration?",
+    "description": "Teamwork",
+    "expected_behavior": "Balanced, respectful explanation."
+  },
+  {
+    "id": "arabi_31",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "A3tini recette b tounsi lel chakchouka, bel ingrédients w les étapes.",
+    "description": "Recipe instruction",
+    "expected_behavior": "Coherent recipe; note household variations if useful."
+  },
+  {
+    "id": "arabi_32",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "N7eb nefhem recursion fi programmation. Fasserha b exemple factorial.",
+    "description": "Programming concept",
+    "expected_behavior": "Correct base case and recursive step."
+  },
+  {
+    "id": "arabi_33",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Kifech n9ayyem source internet 9bal ma nesta3mel ma3loumet'ha fi rapport universitaire?",
+    "description": "Source evaluation",
+    "expected_behavior": "Check author, date, evidence, corroboration and purpose."
+  },
+  {
+    "id": "arabi_34",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ektebli paragraph sghir b tounsi 3la 3lech l9raya w formation continue mohimmin.",
+    "description": "Short-form writing",
+    "expected_behavior": "Coherent natural Tunisian paragraph."
+  },
+  {
+    "id": "arabi_35",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Ken laptop ywalli bti2 wa9t n7ell VS Code w navigateur, chnowa steps safe bech na3ref sabab?",
+    "description": "Basic troubleshooting",
+    "expected_behavior": "Safe diagnostic steps; no destructive recommendations."
+  },
+  {
+    "id": "arabi_36",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli lfar9 bin RAM w stockage SSD b exemple men ordinateur.",
+    "description": "Computer hardware",
+    "expected_behavior": "Distinguish volatile working memory from persistent storage."
+  },
+  {
+    "id": "arabi_37",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "3lech validation data lezemha ma tod5olch fi training data?",
+    "description": "Data leakage",
+    "expected_behavior": "Explain unbiased evaluation and leakage."
+  },
+  {
+    "id": "arabi_38",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "A3tini 5 questions najjem nes2elhom recruteur fi entretien stage AI.",
+    "description": "Interview preparation",
+    "expected_behavior": "Relevant, thoughtful questions."
+  },
+  {
+    "id": "arabi_39",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Kifech n9oul la l demande fi khdemti b tari9a mo7tarma w bla ma n9alle9 l3ala9a?",
+    "description": "Professional communication",
+    "expected_behavior": "Polite boundaries and alternatives."
+  },
+  {
+    "id": "arabi_40",
+    "language": "arabizi",
+    "category": "tunisian_conversation",
+    "prompt": "Fasserli b tounsi kifech moteur de recherche ylawwej 3la résultats w chnowa ya3mel ranking.",
+    "description": "Search systems",
+    "expected_behavior": "Explain retrieval and ranking at a high level."
+  },
+  {
+    "id": "ar_01",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "جاوبني بالتونسي: شنوّة أحوالك اليوم؟",
+    "description": "Everyday greeting",
+    "expected_behavior": "Natural conversational Tunisian Arabic."
+  },
+  {
+    "id": "ar_02",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي بالتونسي علاش الإنسان يلزمو يرتاح بين ساعات القراية.",
+    "description": "Explain rest and learning",
+    "expected_behavior": "Clear practical explanation in Derja."
+  },
+  {
+    "id": "ar_03",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "عندي امتحانات بعد أسبوع وما نظّمتش روحي. اعطيني برنامج مراجعة واقعي.",
+    "description": "Study planning",
+    "expected_behavior": "Feasible seven-day plan with breaks."
+  },
+  {
+    "id": "ar_04",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة الفرق بين تربّص الصيف وتربّص ختم الدراسة PFE؟",
+    "description": "Internship terminology",
+    "expected_behavior": "Accurate distinction between internship types."
+  },
+  {
+    "id": "ar_05",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اقترح عليّا فطور بسيط واقتصادي بمكوّنات نلقاوها عادة في الدار.",
+    "description": "Budget meal",
+    "expected_behavior": "Practical affordable options."
+  },
+  {
+    "id": "ar_06",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "صاحبي خايف من الامتحان. اكتبلي كلام نشجّعو بيه بالتونسي.",
+    "description": "Empathetic response",
+    "expected_behavior": "Warm supportive Tunisian wording."
+  },
+  {
+    "id": "ar_07",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اكتبلي مساج محترم للأستاذ نعتذر فيه على التأخير ونقولو باش نوصل بعد عشر دقايق.",
+    "description": "Polite message",
+    "expected_behavior": "Concise respectful message."
+  },
+  {
+    "id": "ar_08",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي الذكاء الاصطناعي بمثال من الحياة اليومية وبطريقة يفهمها طفل.",
+    "description": "Explain AI",
+    "expected_behavior": "Accurate simple explanation."
+  },
+  {
+    "id": "ar_09",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة الفرق بين الذكاء الاصطناعي والتعلّم الآلي والتعلّم العميق؟",
+    "description": "AI concepts",
+    "expected_behavior": "Explain relationship and hierarchy."
+  },
+  {
+    "id": "ar_10",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي تقنية RAG في تطبيقات الذكاء الاصطناعي وعلاش نستعملوها.",
+    "description": "RAG concept",
+    "expected_behavior": "Explain retrieval-augmented generation accurately."
+  },
+  {
+    "id": "ar_11",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة معناها كي نموذج ذكاء اصطناعي يخترع معلومة ويقدّمها كأنها صحيحة؟",
+    "description": "AI hallucinations",
+    "expected_behavior": "Identify hallucination and ways to verify."
+  },
+  {
+    "id": "ar_12",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اقترح برنامج مرن لنهار نزور فيه المدينة العربيّة في تونس، من غير ما تفترض أوقات فتح المحلات.",
+    "description": "Local itinerary",
+    "expected_behavior": "Useful flexible itinerary; no live-hours claims."
+  },
+  {
+    "id": "ar_13",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي الفرق بين commit وpush في Git بمثال بسيط.",
+    "description": "Git fundamentals",
+    "expected_behavior": "Correctly distinguish local and remote operations."
+  },
+  {
+    "id": "ar_14",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "عندي قائمة أعداد في Python. كيفاش نحسب مجموع الأعداد الزوجية؟ ورّيني الكود.",
+    "description": "Python fundamentals",
+    "expected_behavior": "Correct runnable code and explanation."
+  },
+  {
+    "id": "ar_15",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اكتبلي function في Python تاخو اسم وترجّع تحيّة للشخص.",
+    "description": "Python function",
+    "expected_behavior": "Valid function and usage example."
+  },
+  {
+    "id": "ar_16",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة هو overfitting في machine learning؟ وكيفاش ننقصو منّو؟",
+    "description": "ML overfitting",
+    "expected_behavior": "Explain generalization and remedies."
+  },
+  {
+    "id": "ar_17",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي الفرق بين training data وvalidation data وtest data.",
+    "description": "Dataset splits",
+    "expected_behavior": "Correct roles and data leakage warning."
+  },
+  {
+    "id": "ar_18",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "عندي ثلاث ساعات للمراجعة وأربع مواد، وحدة منهم صعيبة برشة. كيفاش نقسّم الوقت؟",
+    "description": "Planning under constraints",
+    "expected_behavior": "Practical schedule prioritizing the difficult subject."
+  },
+  {
+    "id": "ar_19",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "نحب نعمل CV لتربّص في AI وmachine learning. شنوّة أهم الحاجات اللي نحطّهم؟",
+    "description": "CV guidance",
+    "expected_behavior": "Relevant sections and evidence."
+  },
+  {
+    "id": "ar_20",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "كيفاش نفسّر مشروع machine learning في مقابلة شغل في دقيقة؟",
+    "description": "Interview communication",
+    "expected_behavior": "Structured concise project explanation."
+  },
+  {
+    "id": "ar_21",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اكتبلي ردّ محترم لحريف متقلّق خاطر الطلبية متاعو تأخّرت.",
+    "description": "Customer communication",
+    "expected_behavior": "Empathetic response with no invented delivery details."
+  },
+  {
+    "id": "ar_22",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة الفرق بين الكتابة بالـ Arabizi والكتابة بالحروف العربية؟",
+    "description": "Writing systems",
+    "expected_behavior": "Neutral comparison and contexts."
+  },
+  {
+    "id": "ar_23",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اعطيني ثلاث نصائح بسيطة باش ننقصو من تبذير الماء في الدار.",
+    "description": "Environmental advice",
+    "expected_behavior": "Actionable water-saving advice."
+  },
+  {
+    "id": "ar_24",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "علاش يلزمنا نحافظو على المعطيات الشخصية كي نستعملو تطبيقات الذكاء الاصطناعي؟",
+    "description": "AI privacy",
+    "expected_behavior": "Explain risks and precautions."
+  },
+  {
+    "id": "ar_25",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "سلعة سومها 80 دينار وعليها تخفيض 15 بالمية. قداش يولي سومها؟ فسّر الحساب.",
+    "description": "Percentage calculation",
+    "expected_behavior": "Correctly calculate 68 dinars."
+  },
+  {
+    "id": "ar_26",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة هي API؟ اعطيني مثال كيفاش تطبيق طقس يستعملها.",
+    "description": "API concept",
+    "expected_behavior": "Explain API request and response."
+  },
+  {
+    "id": "ar_27",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي embeddings في معالجة اللغة الطبيعية بمثال ساهل.",
+    "description": "Embeddings",
+    "expected_behavior": "Explain vector representations and semantic relations."
+  },
+  {
+    "id": "ar_28",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "نحب نتعلّم الإنجليزية التقنية. اعطيني برنامج يومي ما يفوتش عشرين دقيقة.",
+    "description": "Language-learning advice",
+    "expected_behavior": "Practical daily routine."
+  },
+  {
+    "id": "ar_29",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "كيفاش نعمل نسخة احتياطية لمشروع Python؟ وعلاش GitHub وحدو موش ديما كافي؟",
+    "description": "Project backup",
+    "expected_behavior": "Explain Git and independent backups."
+  },
+  {
+    "id": "ar_30",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "زميلي في المشروع يحب يخدم وحدو وما يحبّش يقسّم المهام. كيفاش نتفاهم معاه؟",
+    "description": "Teamwork",
+    "expected_behavior": "Respectful collaboration advice."
+  },
+  {
+    "id": "ar_31",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اعطيني طريقة تحضير الشكشوكة التونسية بالمكوّنات والخطوات.",
+    "description": "Recipe instruction",
+    "expected_behavior": "Coherent practical recipe."
+  },
+  {
+    "id": "ar_32",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي recursion في البرمجة باستعمال مثال حساب factorial.",
+    "description": "Programming concept",
+    "expected_behavior": "Explain base case and recursive case correctly."
+  },
+  {
+    "id": "ar_33",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "كيفاش نعرف اللي مصدر على الإنترنت موثوق قبل ما نستعملو في بحث جامعي؟",
+    "description": "Source evaluation",
+    "expected_behavior": "Check authorship, evidence, date and corroboration."
+  },
+  {
+    "id": "ar_34",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اكتبلي فقرة قصيرة بالتونسي على أهمية القراية والتعلّم المستمر.",
+    "description": "Short-form writing",
+    "expected_behavior": "Natural coherent Tunisian text."
+  },
+  {
+    "id": "ar_35",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "الحاسوب متاعي ولى بطيء كي نحل VS Code والمتصفّح. شنوّة نعمل باش نشخّص المشكلة بأمان؟",
+    "description": "Basic troubleshooting",
+    "expected_behavior": "Safe diagnostic steps."
+  },
+  {
+    "id": "ar_36",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "شنوّة الفرق بين RAM وSSD في الحاسوب؟",
+    "description": "Computer hardware",
+    "expected_behavior": "Explain memory versus persistent storage."
+  },
+  {
+    "id": "ar_37",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "علاش ما يلزمش نستعملو بيانات التقييم في تدريب النموذج؟",
+    "description": "Data leakage",
+    "expected_behavior": "Explain evaluation contamination."
+  },
+  {
+    "id": "ar_38",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "اعطيني خمسة أسئلة باهية نسألهم للمسؤول في مقابلة تربّص AI.",
+    "description": "Interview preparation",
+    "expected_behavior": "Relevant recruiter questions."
+  },
+  {
+    "id": "ar_39",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "كيفاش نرفض طلب في الخدمة بطريقة محترمة ونقترح حلّ بديل؟",
+    "description": "Professional communication",
+    "expected_behavior": "Polite boundary-setting."
+  },
+  {
+    "id": "ar_40",
+    "language": "arabic_script_derja",
+    "category": "tunisian_conversation",
+    "prompt": "فسّرلي كيفاش محرّك البحث يلقى صفحات الإنترنت ويرتّب النتائج.",
+    "description": "Search systems",
+    "expected_behavior": "Explain retrieval and ranking simply."
+  },
+  {
+    "id": "mix_01",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Fasserli en tounsi chnowa الفرق بين supervised learning w unsupervised learning, avec un exemple لكل واحد.",
+    "description": "Code-switched ML explanation",
+    "expected_behavior": "Accurate bilingual explanation with examples."
+  },
+  {
+    "id": "mix_02",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Nheb na3mel CV pour un stage en data science. Chnowa les sections essentielles w kifech norganizi'hom?",
+    "description": "Mixed-language CV advice",
+    "expected_behavior": "Useful CV structure."
+  },
+  {
+    "id": "mix_03",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Explique-moi b derja chnowa ya3ni overfitting, w donne-moi deux solutions pratiques.",
+    "description": "French-Tunisian ML explanation",
+    "expected_behavior": "Correct concept and two remedies."
+  },
+  {
+    "id": "mix_04",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "3andi erreur KeyError fi pandas. Fasserli chnowa sababha w kifech ndebugiha.",
+    "description": "Code-switch debugging",
+    "expected_behavior": "Explain missing-key issue and diagnostic fix."
+  },
+  {
+    "id": "mix_05",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "A3tini roadmap de 3 mois bech net3allem Python, SQL w les bases de machine learning.",
+    "description": "Mixed-language roadmap",
+    "expected_behavior": "Structured realistic sequence."
+  },
+  {
+    "id": "mix_06",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Chnowa différence entre stage PFE w CDI? Réponds b tounsi w avec les termes professionnels.",
+    "description": "Employment terminology",
+    "expected_behavior": "Distinguish internship and permanent contract."
+  },
+  {
+    "id": "mix_07",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Fasserli en derja comment Git branches ykhdmou w 3lech l'équipe testa3melhom.",
+    "description": "Git branches",
+    "expected_behavior": "Explain branching and collaboration."
+  },
+  {
+    "id": "mix_08",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Nheb prompt b anglais bech nطلب من AI yشرحلي code Python, ama fasserli kifach n7assen prompt.",
+    "description": "Prompt-writing help",
+    "expected_behavior": "Provide a useful prompt and explain its structure."
+  },
+  {
+    "id": "mix_09",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Kifech norganizi projet machine learning: data cleaning, training, evaluation w deployment?",
+    "description": "ML workflow",
+    "expected_behavior": "Correct ordered lifecycle with iterative nature."
+  },
+  {
+    "id": "mix_10",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Explique RAG vs fine-tuning b derja: wa9tech nesta3mel kol technique?",
+    "description": "RAG versus fine-tuning",
+    "expected_behavior": "Compare purposes and tradeoffs."
+  },
+  {
+    "id": "mix_11",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "3andi dataset فيه texte b Arabizi w français. Chnowa les précautions 9bal tokenizer w training?",
+    "description": "Multilingual data preparation",
+    "expected_behavior": "Discuss normalization, encoding, splitting and tokenizer compatibility."
+  },
+  {
+    "id": "mix_12",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Nheb na3mel présentation de 2 minutes 3la projet chatbot. A3tini plan واضح بالفرنسية والتونسية.",
+    "description": "Presentation structure",
+    "expected_behavior": "Clear concise presentation structure."
+  },
+  {
+    "id": "mix_13",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Fasserli b tounsi chnowa API endpoint w HTTP status code, avec exemples 200, 404 w 500.",
+    "description": "API terminology",
+    "expected_behavior": "Correct meanings of status codes."
+  },
+  {
+    "id": "mix_14",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Kifech n9aren deux modèles LLM b benchmark équitable? Answer b derja w liste les variables elli lezem nثبتوهم.",
+    "description": "LLM evaluation methodology",
+    "expected_behavior": "Control model revision, prompts, decoding, data and metrics."
+  },
+  {
+    "id": "mix_15",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Ektebli email professionnel en français nطلب فيه feedback 3la candidature mta3 stage AI.",
+    "description": "French professional writing",
+    "expected_behavior": "Polite concise email draft."
+  },
+  {
+    "id": "mix_16",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Explain data leakage b English ama donne-moi exemple men projet tunisien de prédiction des prix.",
+    "description": "Bilingual data leakage",
+    "expected_behavior": "Correct example separating train and test information."
+  },
+  {
+    "id": "mix_17",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Nheb nحلّل CSV فيه ventes. Chnowa الفرق بين pandas groupby w pivot_table? Fasserli b exemple.",
+    "description": "Pandas concepts",
+    "expected_behavior": "Accurate comparison and example."
+  },
+  {
+    "id": "mix_18",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "A3tini checklist avant deployment mta3 API Python: tests, security, logging w monitoring.",
+    "description": "Deployment checklist",
+    "expected_behavior": "Practical checklist with safety and operations."
+  },
+  {
+    "id": "mix_19",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Fasserli en tounsi chnowa quantization 4-bit w chnowa trade-off bin memory w quality.",
+    "description": "Quantization explanation",
+    "expected_behavior": "Explain reduced memory and possible quality/compute tradeoffs."
+  },
+  {
+    "id": "mix_20",
+    "language": "mixed_tunisian",
+    "category": "code_switching",
+    "prompt": "Kifech nجاوب في entretien ki يسألوني: Why should we hire you for an AI internship? A3tini réponse bilingue naturelle.",
+    "description": "Mixed interview answer",
+    "expected_behavior": "Credible structured answer without fabricated credentials."
+  },
+  {
+    "id": "eng_01",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain the difference between a Python list and a tuple. Give one example of when each is appropriate.",
+    "description": "Python data structures",
+    "expected_behavior": "Correct mutability and use cases."
+  },
+  {
+    "id": "eng_02",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain retrieval-augmented generation (RAG) as if speaking to a software engineering student. Include the main pipeline stages.",
+    "description": "RAG explanation",
+    "expected_behavior": "Describe retrieval, context construction and generation."
+  },
+  {
+    "id": "eng_03",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "What is the difference between precision, recall and F1 score? Include a small classification example.",
+    "description": "ML evaluation metrics",
+    "expected_behavior": "Correct definitions and relationship."
+  },
+  {
+    "id": "eng_04",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain why a model's training loss can decrease while its validation loss increases.",
+    "description": "Generalization",
+    "expected_behavior": "Explain overfitting and generalization gap."
+  },
+  {
+    "id": "eng_05",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Describe the main differences between SQL INNER JOIN and LEFT JOIN using a small example.",
+    "description": "SQL concepts",
+    "expected_behavior": "Correct row-retention behavior."
+  },
+  {
+    "id": "eng_06",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "What is gradient accumulation, and why might it be useful when fine-tuning a large language model?",
+    "description": "Training mechanics",
+    "expected_behavior": "Explain effective batch and memory tradeoff."
+  },
+  {
+    "id": "eng_07",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain the difference between supervised fine-tuning and preference optimization.",
+    "description": "LLM training",
+    "expected_behavior": "Distinguish demonstration learning from preference-based alignment."
+  },
+  {
+    "id": "eng_08",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Write a concise professional email asking a recruiter whether a machine learning internship position is still open.",
+    "description": "Professional English writing",
+    "expected_behavior": "Polite and clear email."
+  },
+  {
+    "id": "eng_09",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain how attention helps a transformer process relationships between tokens.",
+    "description": "Transformer architecture",
+    "expected_behavior": "Accurate high-level explanation of attention."
+  },
+  {
+    "id": "eng_10",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "What is data versioning, and how does it improve reproducibility in machine learning projects?",
+    "description": "ML engineering",
+    "expected_behavior": "Explain traceability and reproducibility."
+  },
+  {
+    "id": "eng_11",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain the difference between a process and a thread, and give one practical example.",
+    "description": "Computer systems",
+    "expected_behavior": "Correct distinction and example."
+  },
+  {
+    "id": "eng_12",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "A REST API returns HTTP 401. What does this usually indicate, and what should a developer check?",
+    "description": "API troubleshooting",
+    "expected_behavior": "Authentication/authorization nuance: 401 unauthenticated, check credentials."
+  },
+  {
+    "id": "eng_13",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Summarize the tradeoffs of using a quantized 4-bit model instead of a full-precision model for inference.",
+    "description": "Quantized inference",
+    "expected_behavior": "Memory reduction and potential quality/performance tradeoffs."
+  },
+  {
+    "id": "eng_14",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Explain why an evaluation dataset should be kept separate from training data, including one example of leakage.",
+    "description": "Evaluation methodology",
+    "expected_behavior": "Correct explanation and example."
+  },
+  {
+    "id": "eng_15",
+    "language": "english",
+    "category": "english_retention",
+    "prompt": "Describe a practical debugging process for a Python program that runs without errors but produces incorrect results.",
+    "description": "Debugging methodology",
+    "expected_behavior": "Reproduce, inspect assumptions, test intermediate values and write tests."
+  },
+  {
+    "id": "reason_01",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A shop lists a laptop stand for 80 dinars and gives a 15% discount. What is the discounted price? Show the calculation.",
+    "description": "Percentage calculation",
+    "expected_behavior": "Correct answer: 68 dinars."
+  },
+  {
+    "id": "reason_02",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A student studies 45 minutes each day for 6 days. How many hours and minutes is that in total? Show the conversion.",
+    "description": "Time arithmetic",
+    "expected_behavior": "Correct answer: 270 minutes = 4 hours 30 minutes."
+  },
+  {
+    "id": "reason_03",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A dataset has 12,000 rows. If 80% are used for training and 20% for testing, how many rows go into each split?",
+    "description": "Dataset split calculation",
+    "expected_behavior": "Correct answer: 9,600 training and 2,400 testing rows."
+  },
+  {
+    "id": "reason_04",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A function takes 3 seconds to process 120 records at a constant rate. How long would it take to process 800 records? State the assumption.",
+    "description": "Proportional reasoning",
+    "expected_behavior": "Correct answer: 20 seconds under constant throughput."
+  },
+  {
+    "id": "reason_05",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "Find the next number in the sequence 3, 6, 12, 24, ... and explain the pattern.",
+    "description": "Sequence reasoning",
+    "expected_behavior": "Correct answer: 48, doubling each time."
+  },
+  {
+    "id": "reason_06",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A box contains 5 red, 3 blue and 2 green balls. If one ball is selected uniformly at random, what is the probability it is not blue? Give a fraction and percentage.",
+    "description": "Probability",
+    "expected_behavior": "Correct answer: 7/10 = 70%."
+  },
+  {
+    "id": "reason_07",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A team has 4 developers. Each developer reviews 3 pull requests. How many review assignments are made if every assignment is counted once?",
+    "description": "Basic multiplication",
+    "expected_behavior": "Correct answer: 12 assignments."
+  },
+  {
+    "id": "reason_08",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A model answered 72 questions correctly out of 90. Calculate its accuracy as a percentage.",
+    "description": "Accuracy calculation",
+    "expected_behavior": "Correct answer: 80%."
+  },
+  {
+    "id": "reason_09",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A training job starts at 09:35 and runs for 2 hours 48 minutes. At what time does it finish?",
+    "description": "Time calculation",
+    "expected_behavior": "Correct answer: 12:23."
+  },
+  {
+    "id": "reason_10",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "Three API calls take 120 ms, 180 ms and 150 ms. Calculate their mean latency.",
+    "description": "Mean calculation",
+    "expected_behavior": "Correct answer: 150 ms."
+  },
+  {
+    "id": "reason_11",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A storage folder contains 4 files of 250 MB each and 3 files of 100 MB each. What is the total size in MB?",
+    "description": "Addition and units",
+    "expected_behavior": "Correct answer: 1,300 MB."
+  },
+  {
+    "id": "reason_12",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A course has 5 modules. A learner completes 2 modules on Monday and 1 on Tuesday. What percentage of the course modules remain incomplete?",
+    "description": "Percentage reasoning",
+    "expected_behavior": "Correct answer: 40% remain incomplete."
+  },
+  {
+    "id": "reason_13",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A model generates 600 tokens in 12 seconds at a steady rate. What is its generation speed in tokens per second?",
+    "description": "Rate calculation",
+    "expected_behavior": "Correct answer: 50 tokens per second."
+  },
+  {
+    "id": "reason_14",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A dataset contains 2,400 examples. If 25% are Arabizi and the rest are Arabic-script examples, how many examples are in each group?",
+    "description": "Percentage split",
+    "expected_behavior": "Correct answer: 600 Arabizi and 1,800 Arabic-script examples."
+  },
+  {
+    "id": "reason_15",
+    "language": "english",
+    "category": "reasoning_math",
+    "prompt": "A worker completes a task in 6 hours. Assuming a constant rate, how long would 3 equally productive workers take together? State the idealized assumption.",
+    "description": "Work-rate reasoning",
+    "expected_behavior": "Correct answer: 2 hours under ideal parallel work."
+  },
+  {
+    "id": "code_01",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a Python function that returns the largest number in a non-empty list without using max(). Include a small test.",
+    "description": "Python implementation",
+    "expected_behavior": "Correct function and test; handle stated non-empty input."
+  },
+  {
+    "id": "code_02",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Given a list of integers, write Python code that returns only the even numbers while preserving their original order.",
+    "description": "Python filtering",
+    "expected_behavior": "Correct list comprehension or loop."
+  },
+  {
+    "id": "code_03",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a Python function that counts the frequency of each word in a string, ignoring case and basic surrounding punctuation. Explain any limitation.",
+    "description": "Text processing",
+    "expected_behavior": "Reasonable implementation and limitation."
+  },
+  {
+    "id": "code_04",
+    "language": "english",
+    "category": "coding",
+    "prompt": "A pandas DataFrame has columns 'city' and 'sales'. Write code to calculate total sales for each city and sort from highest to lowest.",
+    "description": "Pandas groupby",
+    "expected_behavior": "Correct groupby, sum and descending sort."
+  },
+  {
+    "id": "code_05",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write Python code to read a UTF-8 JSON file containing a list of objects and print the value of the 'prompt' field from each object when present.",
+    "description": "JSON file handling",
+    "expected_behavior": "Correct UTF-8 file reading, JSON parsing and safe field access."
+  },
+  {
+    "id": "code_06",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Explain and fix this Python bug: for i in range(len(items)): print(items[i+1]). It fails on the last iteration.",
+    "description": "Python debugging",
+    "expected_behavior": "Explain index out of range and provide a valid iteration fix."
+  },
+  {
+    "id": "code_07",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a Python function that checks whether a string is a palindrome while ignoring spaces and letter case.",
+    "description": "String algorithm",
+    "expected_behavior": "Correct normalization and comparison."
+  },
+  {
+    "id": "code_08",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a Python function that merges two dictionaries. If a key appears in both, the value from the second dictionary should win.",
+    "description": "Dictionary operations",
+    "expected_behavior": "Correct dictionary merge semantics."
+  },
+  {
+    "id": "code_09",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Create a Python example using requests to call a GET endpoint, check the HTTP status and parse a JSON response. Include basic error handling.",
+    "description": "API client coding",
+    "expected_behavior": "Reasonable requests example, timeout and status/error handling."
+  },
+  {
+    "id": "code_10",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write SQL to return each customer's total order amount from tables customers(id, name) and orders(customer_id, amount), including only customers with at least one order.",
+    "description": "SQL aggregation",
+    "expected_behavior": "Correct INNER JOIN, GROUP BY and SUM."
+  },
+  {
+    "id": "code_11",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a Python function that computes factorial iteratively and rejects negative input with ValueError.",
+    "description": "Python function and validation",
+    "expected_behavior": "Correct factorial and negative-input handling."
+  },
+  {
+    "id": "code_12",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Given a list of dictionaries with a 'score' key, write Python code to return the three highest-scoring records. State what happens if fewer than three records exist.",
+    "description": "Sorting records",
+    "expected_behavior": "Correct sorting and slicing; returns available records."
+  },
+  {
+    "id": "code_13",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a simple Python class named Book with title and author attributes and a method that returns 'title by author'.",
+    "description": "Object-oriented Python",
+    "expected_behavior": "Correct class, initializer and method."
+  },
+  {
+    "id": "code_14",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Explain the time complexity of checking whether a value is in a Python list versus checking membership in a set, on average.",
+    "description": "Algorithmic complexity",
+    "expected_behavior": "List O(n), set average O(1), with caveat."
+  },
+  {
+    "id": "code_15",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write Python code that safely converts a string to an integer and returns None when conversion fails.",
+    "description": "Exception handling",
+    "expected_behavior": "Use try/except ValueError."
+  },
+  {
+    "id": "code_16",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a SQL query to find the second-highest distinct salary in an employees table. Give one solution and explain how ties are handled.",
+    "description": "SQL ranking",
+    "expected_behavior": "Correct distinct ranking/ subquery or window function."
+  },
+  {
+    "id": "code_17",
+    "language": "english",
+    "category": "coding",
+    "prompt": "A Python function modifies a list argument. Explain why the caller can see the change and show how to avoid mutating the original list.",
+    "description": "Python references",
+    "expected_behavior": "Explain mutable object reference and copy."
+  },
+  {
+    "id": "code_18",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write a small pytest test for a function add(a, b) that should return the sum of two numbers. Include at least two test cases.",
+    "description": "Testing",
+    "expected_behavior": "Valid pytest tests."
+  },
+  {
+    "id": "code_19",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Write Python code to remove duplicate strings from a list while preserving first-occurrence order.",
+    "description": "Deduplication",
+    "expected_behavior": "Correct ordered deduplication."
+  },
+  {
+    "id": "code_20",
+    "language": "english",
+    "category": "coding",
+    "prompt": "Design a small Python function that validates that a JSON record contains non-empty 'id', 'language' and 'prompt' fields. Raise ValueError with a useful message when invalid.",
+    "description": "Input validation",
+    "expected_behavior": "Correct robust validation and useful exceptions."
+  }
+]

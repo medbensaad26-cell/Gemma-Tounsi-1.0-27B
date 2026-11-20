@@ -5,8 +5,9 @@ All 8 deployment blockers resolved:
   2. HF Secret "gemma-hf" attached for HF_TOKEN
   3. Persistent dataset Volume "gemma-tounsi-data" mounted at /mnt/data
   4. Persistent checkpoint Volume "gemma-tounsi-checkpoints" mounted at /checkpoints
-     with background commit thread for durability
+     with checkpoint-aware commits (only after trainer_state.json is written)
   5. Persistent HF cache Volume "gemma-tounsi-hf-cache" mounted at /hf-cache
+     committed after model download completes
   6. Automatic checkpoint resumption via "soup train --resume auto" + manifest
   7. Runtime timeout and budget protection (MAX_RUNTIME_SECONDS, STOP_AFTER_STEPS)
   8. All paths are absolute persistent paths
@@ -28,7 +29,59 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import modal
+try:
+    import modal
+except ImportError:  # Allow importing pure functions for local testing
+    modal = None
+
+
+class _ModalStub:
+    """Stub for modal.* when the modal package is not installed locally."""
+
+    class App:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def function(self, *args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+
+        def local_entrypoint(self, *args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+
+    class Image:
+        @staticmethod
+        def debian_slim(python_version=None):
+            return _ModalStub.Image()
+
+        def pip_install(self, *args, **kwargs):
+            return self
+
+        def apt_install(self, *args, **kwargs):
+            return self
+
+        def add_local_file(self, *args, **kwargs):
+            return self
+
+        def run_commands(self, *args, **kwargs):
+            return self
+
+    class Volume:
+        @staticmethod
+        def from_name(*args, **kwargs):
+            return _ModalStub.Volume()
+
+    class Secret:
+        @staticmethod
+        def from_name(*args, **kwargs):
+            return _ModalStub.Secret()
+
+
+if modal is None:
+    modal = _ModalStub()
 
 # --- Embedded training config (soup.modal.yaml) ------------------------------
 # Base64-encoded Modal-specific configuration. Uses absolute persistent paths:
@@ -39,7 +92,7 @@ _CONFIG_B64 = (
     "PT09PT09PT09PT09PT09PT09PT09PQojIHNvdXAubW9kYWwueWFtbCDigJQgR2VtbWEgVG91bnNp"
     "IDEuMCAoMjdCKSBNb2RhbCByZW1vdGUgdHJhaW5pbmcgY29uZmlndXJhdGlvbgojID09PT09PT09"
     "PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09"
-    "PT09PT09PT09PT09CiMKIyBHZW5lcmF0ZWQgZnJvbSBzb3VwLnlhbWwgZm9yIE1vZGFsIGNsb3Vk"
+    "PT09PT09PT09CiMKIyBHZW5lcmF0ZWQgZnJvbSBzb3VwLnlhbWwgZm9yIE1vZGFsIGNsb3Vk"
     "IGV4ZWN1dGlvbi4KIyBQYXRocyBhcmUgYWJzb2x1dGUgY29udGFpbmVyIHBhdGhzIGluc2lkZSB0"
     "aGUgTW9kYWwgTDQwUyBjb250YWluZXI6CiMgICAtIERhdGFzZXQ6ICAvbW50L2RhdGEvc291cF90"
     "cmFpbnZhbC5qc29ubCAgKE1vZGFsIFZvbHVtZTogZ2VtbWEtdG91bnNpLWRhdGEpCiMgICAtIE91"
@@ -68,23 +121,42 @@ _CONFIG_B64 = (
     "YWNjdW11bGF0aW9uX3N0ZXBzOiA4CgogICMgUUxvUkEgPSA0LWJpdCBxdWFudGl6ZWQgYmFzZSAr"
     "IExvUkEgYWRhcHRlci4KICBxdWFudGl6YXRpb246IDRiaXQKCiAgIyBMb1JBIGFkYXB0ZXIuCiAg"
     "bG9yYToKICAgIHI6IDE2CiAgICBhbHBoYTogMzIKICAgIGRyb3BvdXQ6IDAuMDUKICAgIHRhcmdl"
-    "dF9tb2R1bGVzOiBhdXRvCgogICMgR3JhZGllbnQgY2hlY2twb2ludGluZyBmb3IgbWVtb3J5IHNh"
-    "dmluZ3Mgb24gbG9uZyBzZXF1ZW5jZXMgKDgxOTIgdG9rZW5zKS4KICBncmFkaWVudF9jaGVja3Bv"
-    "aW50aW5nOiB0cnVlCgogICMgSW5jbHVkZSBFT1MvRU9UIHRva2VucyBpbiB0aGUgU0ZUIGxvc3Mu"
-    "CiAgdHJhaW5fb25fZW90OiB0cnVlCgogIHNlZWQ6IDQyCiAgbG9nZ2luZ19zdGVwczogMTAKICBz"
-    "YXZlX3N0ZXBzOiAxMDAKCiAgIyBMYXllciBzdHJlYW1pbmcgc3RheXMgT0ZGLgogIHN0cmVhbV9s"
-    "YXllcnM6IGZhbHNlCgojIC0tLSBPdXRwdXQgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t"
-    "LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCiMgQWxsIGNoZWNrcG9pbnRzLCBs"
-    "b2dzLCBhbmQgZmluYWwgYWRhcHRlciBhcnRpZmFjdHMgd3JpdHRlbiB0byBwZXJzaXN0ZW50CiMg"
-    "TW9kYWwgVm9sdW1lIGdlbW1hLXRvdW5zaS1jaGVja3BvaW50cyBhdCAvY2hlY2twb2ludHMvZ2Vt"
-    "bWEtdG91bnNpLTEuMC0yN2IuCm91dHB1dDogL2NoZWNrcG9pbnRzL2dlbW1hLXRvdW5zaS0xLjAt"
-    "MjdiCg=="
+    "dF9tb2R1bGVzOgogICAgICAtIHFfcHJvagogICAgICAtIGtfcHJvagogICAgICAtIHZfcHJvagog"
+    "ICAgICAtIG9fcHJvagoKICAjIEdyYWRpZW50IGNoZWNrcG9pbnRpbmcgZm9yIG1lbW9yeSBzYXZp"
+    "bmdzIG9uIGxvbmcgc2VxdWVuY2VzICg4MTkyIHRva2VucykuCiAgZ3JhZGllbnRfY2hlY2twb2lu"
+    "dGluZzogdHJ1ZQoKICAjIEluY2x1ZGUgRU9TL0VPVCB0b2tlbnMgaW4gdGhlIFNGVCBsb3NzLgog"
+    "IHRyYWluX29uX2VvdDogdHJ1ZQoKICBzZWVkOiA0MgogIGxvZ2dpbmdfc3RlcHM6IDEwCiAgc2F2"
+    "ZV9zdGVwczogMTAwCgogICMgTGF5ZXIgc3RyZWFtaW5nIHN0YXlzIE9GRi4KICBzdHJlYW1fbGF5"
+    "ZXJzOiBmYWxzZQoKIyAtLS0gT3V0cHV0IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t"
+    "LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQojIEFsbCBjaGVja3BvaW50cywgbG9n"
+    "cywgYW5kIGZpbmFsIGFkYXB0ZXIgYXJ0aWZhY3RzIHdyaXR0ZW4gdG8gcGVyc2lzdGVudAojIE1v"
+    "ZGFsIFZvbHVtZSBnZW1tYS10b3Vuc2ktY2hlY2twb2ludHMgYXQgL2NoZWNrcG9pbnRzL2dlbW1h"
+    "LXRvdW5zaS0xLjAtMjdiLgpvdXRwdXQ6IC9jaGVja3BvaW50cy9nZW1tYS10b3Vuc2ktMS4wLTI3"
+    "Ygo="
 )
 
 # --- Runtime limits ----------------------------------------------------------
-MAX_RUNTIME_SECONDS: int = 86400  # 24 hours (Modal max per function attempt)
+# 23 hours with 1 hour margin before Modal's 24-hour hard timeout.
+# Training stops at a completed checkpoint, commits it, and exits cleanly.
+MAX_RUNTIME_SECONDS: int = 82800  # 23 hours (training soft-stop)
+MODAL_FUNCTION_TIMEOUT_SECONDS: int = 86400  # 24 hours (Modal hard timeout)
 STOP_AFTER_STEPS: Optional[int] = None  # Set to stop after N completed steps
-COMMIT_INTERVAL_SECONDS: int = 30  # Modal Volume commit interval
+# Reserve time before Modal's hard timeout for final Volume commits/manifest.
+FINALIZATION_RESERVE_SECONDS: int = 1800  # 30 minutes
+PROCESS_POLL_INTERVAL_SECONDS: int = 10
+
+# --- Budget-aware early stopping -------------------------------------------
+# GPU rate: $0.000842 / second = $3.0312 / GPU-hour (Modal, verified Nov 18 2026).
+# CPU / RAM / storage / keep-alive / image-build reduce usable GPU time, so
+# the real budget boundary is reached earlier than the GPU-only figure.
+GPU_COST_PER_SECOND: float = 0.000842
+TRAINING_BUDGET_USD: float = 24.00  # hard ceiling for training spend
+BUDGET_SAFETY_MARGIN_USD: float = 0.50  # stop before hitting the ceiling
+# Estimated seconds until the training budget is nearly exhausted:
+#   (24.00 - 0.50) / 0.000842 = 27,909 s (~7.75 hr)
+BUDGET_STOP_SECONDS: float = (
+    (TRAINING_BUDGET_USD - BUDGET_SAFETY_MARGIN_USD) / GPU_COST_PER_SECOND
+)
 
 # --- Volume names and mount paths --------------------------------------------
 DATA_VOLUME_NAME = "gemma-tounsi-data"
@@ -99,6 +171,19 @@ DATASET_PATH = f"{DATA_MOUNT}/soup_trainval.jsonl"
 DATASET_SHA256_FILE = f"{DATA_MOUNT}/soup_trainval.jsonl.sha256"
 OUTPUT_DIR = f"{CHECKPOINT_MOUNT}/gemma-tounsi-1.0-27b"
 CHECKPOINT_MANIFEST_PATH = f"{OUTPUT_DIR}/checkpoint_manifest.json"
+LATEST_VALID_CHECKPOINT_PATH = f"{OUTPUT_DIR}/latest-valid-checkpoint"
+
+# HF Trainer writes checkpoint files in this order; trainer_state.json is last.
+# A checkpoint is considered complete ONLY when trainer_state.json exists.
+CHECKPOINT_REQUIRED_FILES = (
+    "adapter_model.safetensors",
+    "adapter_config.json",
+    "optimizer.pt",
+    "scheduler.pt",
+    "trainer_state.json",
+    "rng_state.pth",
+    "training_args.bin",
+)
 
 # --- Modal resources ---------------------------------------------------------
 app = modal.App("gemma-tounsi-train")
@@ -111,28 +196,73 @@ hf_cache_volume = modal.Volume.from_name(
     HF_CACHE_VOLUME_NAME, create_if_missing=True
 )
 
+# Commit lock prevents concurrent commits to the same Volume.
+commit_lock = threading.Lock()
+
+# Steps already committed — avoids re-committing unchanged checkpoints.
+committed_steps: set[int] = set()
+
+
 # BLOCKER 1: Apply model-size compatibility patch in the remote Modal image.
 # The patch copies the repository-managed patch file and apply script into the
 # image, runs them after soup-cli installation, and smoke-tests that
 # model_size_from_name("google/gemma-3-27b-it") returns 27 (not 7).
-image = (
-    modal.Image.debian_slim()
-    .pip_install("soup-cli[train]==0.73.3")
-    .add_local_file(
-        "patches/soup-0.73.3-model-size.patch",
-        remote_path="/tmp/soup-0.73.3-model-size.patch",
+#
+# Python 3.12 is required because Soup 0.73.3 requires Python >=3.10,<3.13.
+# The default Modal debian_slim image ships an incompatible Python version,
+# which caused the image build to fail with "No matching distribution found
+# for soup-cli==0.73.3".
+def get_training_image() -> "modal.Image":
+    """Build and return the Modal training image.
+
+    Reused by both soup_modal_app.py (training entrypoint) and
+    scripts/build_modal_image.py (build-only verification).
+    """
+    return (
+        modal.Image.debian_slim(python_version="3.12")
+        # System dependencies required by Soup / PyTorch training stack.
+        .apt_install("curl", "ca-certificates")
+        # Verify Python 3.12 is active before installing Python packages.
+        .run_commands("python3 --version")
+        .run_commands(
+            "python3 -c 'import sys; assert sys.version_info >= (3, 10), "
+            "\"Python too old\"; assert sys.version_info < (3, 13), "
+            "\"Python too new\"; print(\"Python OK: \", sys.version)'"
+        )
+        .pip_install("soup-cli[train]==0.73.3")
+        # Verify Soup installation and version.
+        .run_commands("python3 -m pip show soup-cli")
+        # Verify dependency consistency (soup-cli[train] extra already pulls
+        # torch, transformers, peft, bitsandbytes, accelerate).
+        .run_commands("python3 -m pip check")
+        .add_local_file(
+            "patches/soup-0.73.3-model-size.patch",
+            remote_path="/tmp/soup-0.73.3-model-size.patch",
+            copy=True,
+        )
+        .add_local_file(
+            "scripts/apply_soup_compat_patch.py",
+            remote_path="/tmp/apply_soup_compat_patch.py",
+            copy=True,
+        )
+        .add_local_file(
+            "scripts/verify_soup_model_size.py",
+            remote_path="/tmp/verify_soup_model_size.py",
+            copy=True,
+        )
+        .run_commands("python3 /tmp/apply_soup_compat_patch.py")
+        # Verify patched model-size detection returns 27B.
+        .run_commands("python3 /tmp/verify_soup_model_size.py")
+        # Verify all required training packages are importable.
+        .run_commands(
+            "python3 -c 'import torch; import transformers; import peft; "
+            "import bitsandbytes; import accelerate; import soup_cli; "
+            "print(\"All required packages importable\")'"
+        )
     )
-    .add_local_file(
-        "scripts/apply_soup_compat_patch.py",
-        remote_path="/tmp/apply_soup_compat_patch.py",
-    )
-    .run_commands("python3 /tmp/apply_soup_compat_patch.py")
-    .run_commands(
-        'python3 -c "from soup_cli.utils.gpu import model_size_from_name as m; '
-        'assert m(\"google/gemma-3-27b-it\") == 27, f\"Expected 27B, got {m(\"google/gemma-3-27b-it\")}B\"; '
-        'print(\"Patch smoke test passed: Gemma 3 27B confirmed\")"'
-    )
-)
+
+
+image = get_training_image()
 
 # BLOCKER 2: HF Secret "gemma-hf" provides HF_TOKEN. Attached to the function.
 # The secret must be created manually: modal secret create gemma-hf HF_TOKEN=...
@@ -146,6 +276,21 @@ def compute_sha256(file_path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def get_model_revision() -> str:
+    """Get the exact Hugging Face model revision/commit hash.
+
+    Returns the resolved revision (commit SHA) for the gated base model.
+    Falls back to "unknown" if the Hugging Face Hub is unreachable.
+    """
+    try:
+        from huggingface_hub import model_info
+
+        info = model_info("google/gemma-3-27b-it")
+        return info.sha or info.revision or "unknown"
+    except Exception:  # noqa: BLE001
+        return "unknown"
 
 
 def validate_dataset() -> str:
@@ -184,24 +329,42 @@ def validate_dataset() -> str:
 def validate_hf_token() -> None:
     """Validate HF_TOKEN is available from the attached Secret.
 
-    Raises RuntimeError if the token is missing.
+    Checks HF_TOKEN first, then falls back to HF_Token (case-sensitive).
+    If either contains a non-empty token, normalizes it into
+    os.environ["HF_TOKEN"] for subprocess consumption.
+
+    Raises RuntimeError if neither key contains a token.
     """
-    if not os.environ.get("HF_TOKEN"):
-        raise RuntimeError(
-            "HF_TOKEN environment variable is not set. "
-            "Ensure the 'gemma-hf' Modal Secret is attached to this function "
-            "(modal secret create gemma-hf HF_TOKEN=...)."
-        )
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HF_Token")
+    if token:
+        os.environ["HF_TOKEN"] = token
+        return
+    raise RuntimeError(
+        "HF_TOKEN environment variable is not set. "
+        "Ensure the 'gemma-hf' Modal Secret is attached to this function "
+        "(modal secret create gemma-hf HF_TOKEN=...)."
+    )
 
 
-def find_latest_checkpoint_step(output_dir: Path) -> Optional[int]:
-    """Find the latest completed checkpoint step in the output directory.
+def checkpoint_is_complete(checkpoint_dir: Path) -> bool:
+    """Return True only if all required checkpoint files exist.
 
-    Returns None if no checkpoints exist.
-    Only returns checkpoints that appear complete (contain trainer_state.json).
+    HF Trainer writes trainer_state.json LAST, so its presence indicates
+    the checkpoint was fully written and closed.
+    """
+    for fname in CHECKPOINT_REQUIRED_FILES:
+        if not (checkpoint_dir / fname).exists():
+            return False
+    return True
+
+
+def find_completed_checkpoints(output_dir: Path) -> list[tuple[int, Path]]:
+    """Find all completed checkpoints (have trainer_state.json).
+
+    Returns list of (step, path) tuples sorted by step.
     """
     if not output_dir.exists():
-        return None
+        return []
 
     checkpoints = []
     for d in output_dir.iterdir():
@@ -210,50 +373,104 @@ def find_latest_checkpoint_step(output_dir: Path) -> Optional[int]:
                 step = int(d.name.split("-")[-1])
             except (ValueError, IndexError):
                 continue
-            # Only consider checkpoints that have a trainer_state.json (complete)
-            if (d / "trainer_state.json").exists():
+            if checkpoint_is_complete(d):
                 checkpoints.append((step, d))
 
-    if not checkpoints:
-        return None
-
     checkpoints.sort(key=lambda x: x[0])
-    return checkpoints[-1][0]
+    return checkpoints
 
 
-def periodic_commit(stop_event: threading.Event, interval: int) -> None:
-    """Background thread that commits all Modal Volumes periodically.
+def find_latest_checkpoint_step(output_dir: Path) -> Optional[int]:
+    """Find the latest completed checkpoint step.
 
-    Ensures checkpoint writes are durable even if the container is terminated
-    unexpectedly. Modal Volumes require explicit .commit() calls.
+    Returns None if no completed checkpoints exist.
     """
-    while not stop_event.is_set():
-        stop_event.wait(interval)
-        if stop_event.is_set():
-            break
+    completed = find_completed_checkpoints(output_dir)
+    if not completed:
+        return None
+    return completed[-1][0]
+
+
+def commit_checkpoint_volume(committed_steps_arg: set[int]) -> set[int]:
+    """Commit the checkpoint Volume for newly completed checkpoints only.
+
+    Scans for checkpoint directories with trainer_state.json that haven't
+    been committed yet. Commits the Volume once if any new checkpoints exist.
+    Returns the updated set of committed step numbers.
+    """
+    with commit_lock:
+        newly_committed = set()
+        completed = find_completed_checkpoints(Path(OUTPUT_DIR))
+        for step, _ in completed:
+            if step not in committed_steps_arg:
+                newly_committed.add(step)
+
+        if newly_committed:
+            try:
+                checkpoint_volume.commit()
+                print(
+                    f"Checkpoint Volume committed for steps: "
+                    f"{sorted(newly_committed)}"
+                )
+                # Only update tracking and pointer on successful commit.
+                # On failure, committed_steps_arg is unchanged so the
+                # previous valid checkpoint remains recoverable.
+                latest = max(newly_committed)
+                update_latest_valid_checkpoint(Path(OUTPUT_DIR), latest)
+                # Commit the Volume again so the latest-valid-checkpoint
+                # pointer file itself is durable on Modal storage.
+                checkpoint_volume.commit()
+                committed_steps_arg = committed_steps_arg | newly_committed
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] Checkpoint Volume commit failed: {exc}")
+
+        return committed_steps_arg
+
+
+def commit_hf_cache_volume() -> None:
+    """Commit the HF cache Volume after model download completes.
+
+    Called after training finishes (model is cached by then).
+    """
+    with commit_lock:
         try:
-            checkpoint_volume.commit()
             hf_cache_volume.commit()
-            data_volume.commit()
-        except Exception as exc:  # noqa: BLE001 — never crash training
-            print(f"[warn] Periodic Volume commit failed: {exc}")
-
-
-def commit_all_volumes() -> None:
-    """Commit all Modal Volumes (final durability flush)."""
-    for vol in (checkpoint_volume, hf_cache_volume, data_volume):
-        try:
-            vol.commit()
+            print("HF cache Volume committed.")
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] Final Volume commit failed for {vol}: {exc}")
+            print(f"[warn] HF cache Volume commit failed: {exc}")
+
+
+def commit_dataset_volume() -> None:
+    """Commit the dataset Volume after upload and checksum verification.
+
+    Called once at startup after dataset validation succeeds.
+    """
+    with commit_lock:
+        try:
+            data_volume.commit()
+            print("Dataset Volume committed.")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] Dataset Volume commit failed: {exc}")
+
+
+def update_latest_valid_checkpoint(output_dir: Path, step: int) -> None:
+    """Atomically update the latest-valid-checkpoint pointer.
+
+    Writes to a temp file then atomically replaces the pointer. If the
+    process crashes during write, the previous pointer is preserved.
+    """
+    pointer_path = Path(output_dir) / "latest-valid-checkpoint"
+    temp_path = pointer_path.with_suffix(".tmp")
+    temp_path.write_text(str(step), encoding="utf-8")
+    temp_path.replace(pointer_path)
 
 
 def generate_manifest() -> None:
     """Generate a checkpoint manifest with metadata and SHA256 checksums.
 
-    Written to OUTPUT_DIR/checkpoint_manifest.json.
-    Includes versions, training config fingerprint, dataset fingerprint,
-    checkpoint file list, and checksums.
+    Written to OUTPUT_DIR/checkpoint_manifest.json AFTER all checkpoints
+    have been committed. Includes versions, training config fingerprint,
+    dataset fingerprint, checkpoint file list, and checksums.
     """
     import importlib.metadata
 
@@ -269,33 +486,27 @@ def generate_manifest() -> None:
         except importlib.metadata.PackageNotFoundError:
             versions[pkg] = "unknown"
 
-    # Collect checkpoint information
+    # Collect checkpoint information (only completed checkpoints)
     checkpoints = []
-    for d in sorted(output_dir.iterdir()):
-        if d.is_dir() and d.name.startswith("checkpoint-"):
-            try:
-                step = int(d.name.split("-")[-1])
-            except (ValueError, IndexError):
-                continue
+    for step, d in find_completed_checkpoints(output_dir):
+        files = []
+        for f in sorted(d.iterdir()):
+            if f.is_file():
+                files.append(
+                    {
+                        "name": f.name,
+                        "size": f.stat().st_size,
+                        "sha256": compute_sha256(f),
+                    }
+                )
 
-            files = []
-            for f in sorted(d.iterdir()):
-                if f.is_file():
-                    files.append(
-                        {
-                            "name": f.name,
-                            "size": f.stat().st_size,
-                            "sha256": compute_sha256(f),
-                        }
-                    )
-
-            checkpoints.append(
-                {
-                    "step": step,
-                    "path": d.name,
-                    "files": files,
-                }
-            )
+        checkpoints.append(
+            {
+                "step": step,
+                "path": d.name,
+                "files": files,
+            }
+        )
 
     # Dataset fingerprint
     dataset_sha256 = ""
@@ -312,6 +523,7 @@ def generate_manifest() -> None:
     manifest = {
         "project": "gemma-tounsi-1.0-27b",
         "base_model": "google/gemma-3-27b-it",
+        "base_model_revision": get_model_revision(),
         "soup_version": "0.73.3",
         "python_version": sys.version,
         "dependencies": versions,
@@ -329,7 +541,7 @@ def generate_manifest() -> None:
 @app.function(
     image=image,
     gpu="L40S",
-    timeout=MAX_RUNTIME_SECONDS,
+    timeout=MODAL_FUNCTION_TIMEOUT_SECONDS,
     secrets=[hf_secret],
     volumes={
         DATA_MOUNT: data_volume,
@@ -344,9 +556,22 @@ def train(
     """Run Soup SFT training with checkpoint persistence and resume support.
 
     BLOCKER 6: Automatic checkpoint resumption via --resume auto.
-    BLOCKER 7: Runtime timeout and soft-stop protection.
-    BLOCKER 4: Background commit thread for Volume durability.
+    BLOCKER 7: Runtime timeout and soft-stop protection (23h margin).
+    BLOCKER 4: Per-checkpoint Volume commits after every completed checkpoint.
+
+    Commit safety:
+      * No periodic background commits — avoids committing partial checkpoints.
+      * Commits happen after EVERY completed checkpoint (trainer_state.json
+        present), not just after the subprocess exits.
+      * Only checkpoints with trainer_state.json (complete) are committed.
+      * A threading lock prevents concurrent commits.
+      * Failed commits preserve the previous valid checkpoint pointer.
     """
+    global committed_steps
+
+    # Internal runtime clock — starts when train() begins, before any work.
+    training_start_time = time.monotonic()
+
     # Set HF cache environment variables (BLOCKER 5)
     os.environ["HF_HOME"] = HF_CACHE_MOUNT
     os.environ["HF_HUB_CACHE"] = f"{HF_CACHE_MOUNT}/hub"
@@ -359,6 +584,9 @@ def train(
 
     # BLOCKER 3: Validate dataset exists and (optionally) SHA256
     dataset_sha256 = validate_dataset()
+
+    # Commit dataset Volume after successful validation (BLOCKER 4)
+    commit_dataset_volume()
 
     # BLOCKER 2: Validate HF_TOKEN is available from the Secret
     validate_hf_token()
@@ -374,26 +602,32 @@ def train(
             )
             return
 
-    # Start background commit thread for Volume durability (BLOCKER 4)
-    stop_event = threading.Event()
-    commit_thread = threading.Thread(
-        target=periodic_commit,
-        args=(stop_event, COMMIT_INTERVAL_SECONDS),
-        daemon=True,
-    )
-    commit_thread.start()
-
     try:
-        # Build soup train command with --resume auto (BLOCKER 6)
+        # Determine whether to resume from an existing checkpoint or start fresh.
+        latest_step = find_latest_checkpoint_step(output_dir)
+        if latest_step is not None:
+            print(
+                f"Resuming training from checkpoint at step {latest_step}."
+            )
+            resume_args = ["--resume", "auto"]
+        else:
+            print("No existing checkpoint found. Starting fresh training.")
+            resume_args = []
+
+        # Remember the latest checkpoint that existed before this run.
+        # At the soft runtime limit, wait for one newer checkpoint to be
+        # fully written and committed before requesting process termination.
+        initial_checkpoint_step = latest_step
+
+        # Build soup train command (BLOCKER 6)
         cmd = [
             "soup",
             "train",
             "--config",
             config_path,
             "--yes",
-            "--resume",
-            "auto",
         ]
+        cmd.extend(resume_args)
 
         print(f"Starting training: {' '.join(cmd)}")
         print(f"Output directory: {OUTPUT_DIR}")
@@ -401,45 +635,173 @@ def train(
         if stop_after_steps:
             print(f"Stop after steps: {stop_after_steps}")
 
-        start_time = time.time()
+        # The internal soft-stop must leave time for the parent function to
+        # commit Volumes and write the manifest before Modal's hard timeout.
+        forced_stop_elapsed = (
+            MODAL_FUNCTION_TIMEOUT_SECONDS - FINALIZATION_RESERVE_SECONDS
+        )
+        if max_runtime_seconds <= 0 or max_runtime_seconds >= forced_stop_elapsed:
+            raise ValueError(
+                "max_runtime_seconds must be positive and leave the configured "
+                "finalization reserve before Modal's hard timeout."
+            )
+
         process = subprocess.Popen(cmd)
+        termination_requested = False
+        termination_reason: Optional[str] = None
 
-        # Monitor process for soft-stop conditions (BLOCKER 7)
-        while process.poll() is None:
-            elapsed = time.time() - start_time
-            if elapsed >= max_runtime_seconds:
-                print(
-                    f"MAX_RUNTIME_SECONDS ({max_runtime_seconds}) reached. "
-                    "Sending SIGTERM for graceful stop at next checkpoint."
-                )
+        def request_sigterm(reason: str) -> None:
+            """Request process termination after checkpoint durability when possible.
+
+            Transformers 4.x, which is the range allowed by Soup 0.73.3,
+            does not expose the newer JIT SIGTERM checkpoint option. This
+            SIGTERM is therefore not assumed to trigger a Trainer save.
+            The normal stop path sends it only after a newer checkpoint has
+            completed and been committed. The final-deadline path preserves
+            the last committed checkpoint and may discard newer in-flight work.
+            """
+            nonlocal termination_requested, termination_reason
+            termination_requested = True
+            termination_reason = reason
+            print(f"[shutdown] Sending SIGTERM to Soup: {reason}")
+            try:
                 process.send_signal(signal.SIGTERM)
-                break
+            except ProcessLookupError:
+                # The process exited between poll() and signal delivery.
+                pass
 
+        soft_stop_requested = False
+        budget_stop_requested = False
+
+        # Monitor the subprocess and commit every complete checkpoint.
+        while process.poll() is None:
+            elapsed = time.monotonic() - training_start_time
+
+            latest_step_now = find_latest_checkpoint_step(output_dir)
+            committed_steps = commit_checkpoint_volume(committed_steps)
+
+            # Budget-aware early stop: when estimated training spend approaches
+            # the $24.00 ceiling, request a graceful stop at the next committed
+            # checkpoint. This preserves the latest valid checkpoint and leaves
+            # room for the $2.00 finalization phase. Never auto-restart.
+            estimated_cost = elapsed * GPU_COST_PER_SECOND
+            if (
+                not budget_stop_requested
+                and elapsed >= BUDGET_STOP_SECONDS
+            ):
+                budget_stop_requested = True
+                print(
+                    f"[budget] Estimated training cost ${estimated_cost:.2f} >= "
+                    f"${TRAINING_BUDGET_USD - BUDGET_SAFETY_MARGIN_USD:.2f} "
+                    f"ceiling (budget ${TRAINING_BUDGET_USD:.2f}). "
+                    "Requesting graceful stop at next committed checkpoint."
+                )
+
+            # Explicit step-limited runs stop only after the target checkpoint
+            # has passed validation and has been committed to the Volume.
             if stop_after_steps is not None:
-                latest_step = find_latest_checkpoint_step(output_dir)
-                if latest_step is not None and latest_step >= stop_after_steps:
-                    print(
-                        f"STOP_AFTER_STEPS ({stop_after_steps}) reached at "
-                        f"step {latest_step}. Sending SIGTERM for graceful stop."
+                if (
+                    latest_step_now is not None
+                    and latest_step_now >= stop_after_steps
+                    and latest_step_now in committed_steps
+                ):
+                    request_sigterm(
+                        f"STOP_AFTER_STEPS={stop_after_steps} reached; "
+                        f"checkpoint {latest_step_now} is committed"
                     )
-                    process.send_signal(signal.SIGTERM)
                     break
 
-            time.sleep(10)
+            if elapsed >= max_runtime_seconds and not soft_stop_requested:
+                soft_stop_requested = True
+                print(
+                    f"[shutdown] {max_runtime_seconds}s soft runtime reached. "
+                    "Waiting for a newer complete checkpoint to be committed."
+                )
 
-        process.wait()
+            if soft_stop_requested:
+                has_new_committed_checkpoint = (
+                    latest_step_now is not None
+                    and (
+                        initial_checkpoint_step is None
+                        or latest_step_now > initial_checkpoint_step
+                    )
+                    and latest_step_now in committed_steps
+                )
+                if has_new_committed_checkpoint:
+                    request_sigterm(
+                        f"new checkpoint {latest_step_now} is complete and committed"
+                    )
+                    break
 
-        if process.returncode not in (0, -signal.SIGTERM):
+            if budget_stop_requested:
+                has_new_committed_checkpoint = (
+                    latest_step_now is not None
+                    and (
+                        initial_checkpoint_step is None
+                        or latest_step_now > initial_checkpoint_step
+                    )
+                    and latest_step_now in committed_steps
+                )
+                if has_new_committed_checkpoint:
+                    request_sigterm(
+                        f"training budget nearly exhausted (est. "
+                        f"${estimated_cost:.2f} of ${TRAINING_BUDGET_USD:.2f}); "
+                        f"checkpoint {latest_step_now} is committed"
+                    )
+                    break
+
+            # Last-resort stop before Modal's hard timeout. This may interrupt
+            # the current step, but the last fully committed checkpoint stays
+            # the recovery point; incomplete checkpoint directories are ignored.
+            if elapsed >= forced_stop_elapsed:
+                request_sigterm(
+                    "finalization reserve reached; preserving the latest "
+                    "fully committed checkpoint"
+                )
+                break
+
+            time.sleep(PROCESS_POLL_INTERVAL_SECONDS)
+
+        if termination_requested:
+            try:
+                process.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                print(
+                    "[warn] Soup did not exit after SIGTERM within 60 seconds; "
+                    "sending SIGKILL. The last committed checkpoint remains "
+                    "the recovery point."
+                )
+                process.kill()
+                process.wait()
+        else:
+            process.wait()
+
+        expected_signal_exit = termination_requested and process.returncode in (
+            -signal.SIGTERM,
+            -signal.SIGKILL,
+        )
+        if process.returncode != 0 and not expected_signal_exit:
             raise subprocess.CalledProcessError(process.returncode, cmd)
 
-        print(f"Training completed with return code {process.returncode}")
+        if termination_requested:
+            last_committed_step = max(committed_steps) if committed_steps else None
+            print(
+                f"Training process stopped ({termination_reason}). "
+                f"Last committed checkpoint step: {last_committed_step}."
+            )
+        else:
+            print(f"Training completed with return code {process.returncode}")
 
     finally:
-        stop_event.set()
-        commit_thread.join(timeout=10)
-        # Final commit of all Volumes (BLOCKER 4)
-        commit_all_volumes()
-        # Generate checkpoint manifest (BLOCKER 6)
+        # Final per-checkpoint commit for any checkpoints saved after the
+        # last poll cycle. HF Trainer has finished writing all checkpoints
+        # by the time the subprocess exits.
+        committed_steps = commit_checkpoint_volume(committed_steps)
+
+        # Commit HF cache Volume after model download completes (BLOCKER 5)
+        commit_hf_cache_volume()
+
+        # Generate checkpoint manifest AFTER successful commits (BLOCKER 6)
         generate_manifest()
 
 
@@ -451,7 +813,7 @@ def main(
     """Entry point for `modal run --detach soup_modal_app.py`.
 
     Args:
-        max_runtime_seconds: Maximum runtime per session (default 86400s = 24h).
+        max_runtime_seconds: Maximum runtime per session (default 82800s = 23h).
         stop_after_steps: Stop training after this many completed steps.
     """
     print("=" * 60)
@@ -467,9 +829,14 @@ def main(
     print(f"Max runtime: {max_runtime_seconds}s")
     if stop_after_steps:
         print(f"Stop after steps: {stop_after_steps}")
+    print(f"Training budget: ${TRAINING_BUDGET_USD:.2f} (GPU-only ceiling)")
+    print(
+        f"Budget-aware stop at ~${TRAINING_BUDGET_USD - BUDGET_SAFETY_MARGIN_USD:.2f} "
+        f"estimated cost ({BUDGET_STOP_SECONDS:.0f}s / {BUDGET_STOP_SECONDS/3600:.1f}h)"
+    )
     print("=" * 60)
 
-    train(
+    train.remote(
         max_runtime_seconds=max_runtime_seconds,
         stop_after_steps=stop_after_steps,
     )

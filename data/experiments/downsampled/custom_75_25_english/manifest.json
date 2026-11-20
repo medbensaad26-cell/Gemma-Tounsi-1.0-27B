@@ -1,0 +1,192 @@
+{
+  "project": "Gemma Tounsi 1.0 27B",
+  "base_model": "google/gemma-3-27b-it",
+  "framework": "Soup (QLoRA SFT)",
+  "variant": "custom_75_25_english",
+  "seed": 42,
+  "description": "Custom variant derived strictly from data/experiments/downsampled/75_percent/train.jsonl. Preserves 100% of arabizi / ar / mixed examples and retains ~25% of English examples (deterministic, seed 42, stratified by task category).",
+  "tokenizer": {
+    "name": "google/gemma-3-27b-it",
+    "local_path": ".cache\\huggingface\\hub\\models--google--gemma-3-27b-it\\snapshots\\005ad3404e59d6023443cb575daa05336842228a",
+    "method": "apply_chat_template(chatml/gemma3, add_special_tokens=False)",
+    "note": "Total formatted sequence tokens (user + assistant). Preserved-category token totals reused from downsampled manifest (identical tokenizer/method); only selected English examples were tokenized."
+  },
+  "source": {
+    "file": "data\\experiments\\downsampled\\75_percent\\train.jsonl",
+    "size_bytes": 447488314,
+    "sha256": "33bddcd738e1ff72cccac0c72026356d45cd45575523678018bd9db8dea7de73"
+  },
+  "original_files": {
+    "train": {
+      "path": "data\\splits\\train.jsonl",
+      "sha256": "86fd39254eda303c7e2f8dc4adaa11bfb5fa7e6a542fbf4fa0675548765b3a14"
+    },
+    "validation": {
+      "path": "data\\splits\\validation.jsonl",
+      "sha256": "b57b3bb87999c6f58c656d1b25db747267ef26913b32be0f6610f716451060d4"
+    },
+    "test": {
+      "path": "data\\splits\\test.jsonl",
+      "sha256": "95f43a8fba2f5e0f7f309a00d8a52b705952e4bfa62158aff029a1e0ac79e53a"
+    },
+    "soup_trainval": {
+      "path": "data\\splits\\soup_trainval.jsonl",
+      "sha256": "c6299fac164f6772175342b986856927a3c1c5a7496cd273f937206361f5cfe7"
+    },
+    "source_75": {
+      "path": "data\\experiments\\downsampled\\75_percent\\train.jsonl",
+      "sha256": "33bddcd738e1ff72cccac0c72026356d45cd45575523678018bd9db8dea7de73"
+    }
+  },
+  "selection": {
+    "en_target_examples": 27407,
+    "en_selected_examples": 27407,
+    "en_ratio_percent": 25.000456096181562,
+    "en_allocation_by_category": {
+      "coding": 1108,
+      "knowledge_qa": 4969,
+      "mathematics": 9866,
+      "general_instruction": 4024,
+      "reasoning": 7440
+    },
+    "source_counts": {
+      "arabizi": 183423,
+      "mixed": 11905,
+      "en": 109626,
+      "ar": 161837
+    }
+  },
+  "output": {
+    "file": "data\\experiments\\downsampled\\custom_75_25_english\\train.jsonl",
+    "size_bytes": 293746534,
+    "sha256": "b6369becf9d536495df59a0849065f5117903596038eff7a9945168ca4672ff0"
+  },
+  "stats": {
+    "total_examples": 384572,
+    "total_tokens": 45926282,
+    "disk_size_bytes": 293746534,
+    "by_language": {
+      "arabizi": 183423,
+      "ar": 161837,
+      "mixed": 11905,
+      "en": 27407
+    },
+    "tokens_by_language": {
+      "arabizi": 8940111,
+      "ar": 25475341,
+      "mixed": 541632,
+      "en": 10969198
+    },
+    "by_category": {
+      "general_instruction": 295796,
+      "knowledge_qa": 70362,
+      "coding": 1108,
+      "mathematics": 9866,
+      "reasoning": 7440
+    },
+    "by_source": {
+      "ctab": 5113,
+      "farah21_reddit_tunisia_qa_mixed": 779,
+      "farah21_reddit_tunisia_qa": 120,
+      "farah21_tunisia_tech": 72,
+      "tarc": 21705,
+      "tunizi_v2": 145417,
+      "tunizi_v1": 8943,
+      "chaymafourati_tunizi": 1274,
+      "hamzabouajila_tunisian_derja_unified": 104846,
+      "linagora_tunisian_derja_dataset_tsc": 37069,
+      "code-feedback": 1108,
+      "ArabicaQA-SIGIR2024": 1694,
+      "slimorca": 16433,
+      "metamathqa": 9866,
+      "cidar": 1617,
+      "aya_dataset_arabic": 762,
+      "linto_text_ar_tn_tsc": 3937,
+      "syrinesmati_tunisian_question_response": 186,
+      "alpaca_arabic_gpt4": 7881,
+      "linagora_TunisianSentimentAnalysis": 2992,
+      "linagora_TunBERT": 8644,
+      "linagora_Sentiment_Derja": 2922,
+      "linagora_QADI_TunisianDialect": 1095,
+      "linagora_HkayetErwi": 97
+    },
+    "pct_examples_by_language": {
+      "arabizi": 47.69536003661213,
+      "ar": 42.0823668909853,
+      "mixed": 3.095649189228545,
+      "en": 7.126623883174021
+    },
+    "pct_tokens_by_language": {
+      "arabizi": 19.466219799808744,
+      "ar": 55.4700704925341,
+      "mixed": 1.1793508562265067,
+      "en": 23.884358851430648
+    },
+    "avg_tokens_per_example": 119.42180397948889
+  },
+  "source_stats": {
+    "total_examples": 466791,
+    "total_tokens": 79092862,
+    "by_language": {
+      "arabizi": 183423,
+      "mixed": 11905,
+      "en": 109626,
+      "ar": 161837
+    },
+    "tokens_by_language": {
+      "arabizi": 8940111,
+      "mixed": 541632,
+      "en": 44135778,
+      "ar": 25475341
+    },
+    "disk_size_bytes": 447488314
+  },
+  "reduction_vs_source": {
+    "examples": 82219,
+    "examples_percent": 17.61366435942424,
+    "tokens": 33166580,
+    "tokens_percent": 41.9337208963307,
+    "disk_size_bytes": 153741780
+  },
+  "integrity": {
+    "every_output_example_exists_in_source": true,
+    "no_duplicates_in_output": true,
+    "preserved_categories_complete": true,
+    "english_approximately_25_percent": true,
+    "no_validation_test_leakage": true,
+    "all_source_datasets_unchanged": true
+  },
+  "integrity_detail": {
+    "examples_missing_in_source": [],
+    "duplicate_ids_in_output": [],
+    "preservation_detail": {
+      "arabizi": {
+        "source": 183423,
+        "kept": 183423,
+        "complete": true
+      },
+      "ar": {
+        "source": 161837,
+        "kept": 161837,
+        "complete": true
+      },
+      "mixed": {
+        "source": 11905,
+        "kept": 11905,
+        "complete": true
+      }
+    },
+    "english_ratio": 0.2500045609618156,
+    "english_source": 109626,
+    "english_selected": 27407,
+    "leaked_validation_ids": [],
+    "leaked_test_ids": [],
+    "checksums_verified": {
+      "train": true,
+      "validation": true,
+      "test": true,
+      "soup_trainval": true,
+      "source_75": true
+    }
+  }
+}
