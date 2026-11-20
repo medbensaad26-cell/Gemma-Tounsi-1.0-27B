@@ -2,7 +2,7 @@
 """Safely patch the Modal launcher to resume Gemma Tounsi from checkpoint >= 900.
 
 Run from the Gemma-Tounsi-1.0-27B project root:
-    python apply_gemma_tounsi_resume_patch.py
+    python scripts/dev/apply_gemma_tounsi_resume_patch.py
 
 The script edits modal_train_custom_75_25_english.py only, creates a timestamped
 backup first, and refuses to patch if the expected original code is not found.
@@ -16,7 +16,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-TARGET = Path("modal_train_custom_75_25_english.py")
+TARGET = Path(__file__).resolve().parents[2] / "modal_train_custom_75_25_english.py"
 
 OLD_RESUME_BLOCK = '''        # Determine whether to resume from an existing checkpoint or start fresh.
         latest_step = find_latest_checkpoint_step(output_dir)

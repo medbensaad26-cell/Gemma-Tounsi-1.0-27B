@@ -5,9 +5,9 @@ from pathlib import Path
 
 
 def main() -> None:
-    app_path = Path(__file__).resolve().with_name("soup_modal_app.py")
+    app_path = Path(__file__).resolve().parents[2] / "soup_modal_app.py"
     if not app_path.is_file():
-        raise SystemExit(f"ERROR: {app_path.name} was not found beside this script.")
+        raise SystemExit(f"ERROR: {app_path.name} was not found at the repository root.")
 
     old = "FINALIZATION_RESERVE_SECONDS: int = 900  # 15 minutes"
     new = "FINALIZATION_RESERVE_SECONDS: int = 1800  # 30 minutes"

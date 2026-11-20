@@ -10,7 +10,7 @@ import ast
 import os
 from pathlib import Path
 
-TARGET = Path("soup_modal_app.py")
+TARGET = Path(__file__).resolve().parents[2] / "soup_modal_app.py"
 BACKUP = Path("soup_modal_app.py.before_runtime_shutdown_fix.bak")
 
 REPLACEMENTS = [

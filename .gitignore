@@ -377,6 +377,17 @@ evidence*.json
 *.repro-receipt.json
 
 
+# --- Terraform / infrastructure state ---
+soup.tfstate
+*.tfstate
+*.tfstate.backup
+
+# --- Backup files ---
+*.bak
+
+# --- Temporary verification files ---
+tmp_*.jsonl
+
 # --- OS / editor noise -------------------------------------------------------
 .DS_Store
 Thumbs.db
